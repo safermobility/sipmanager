@@ -69,6 +69,7 @@ package sdp
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -80,6 +81,10 @@ import (
 const (
 	ContentType = "application/sdp"
 	MaxLength   = 1450
+)
+
+var (
+	ErrInvalidSDP = errors.New("invalid sdp")
 )
 
 // SDP represents a Session Description Protocol SIP payload.
@@ -123,14 +128,14 @@ func Parse(s string) (sdp *SDP, err error) {
 
 	// Eat version.
 	if !strings.HasPrefix(s, "v=0\r\n") {
-		return nil, errors.New("sdp must start with v=0\\r\\n")
+		return nil, fmt.Errorf("%w: sdp must start with v=0", ErrInvalidSDP)
 	}
 	s = s[5:]
 
 	// Turn into lines.
 	lines := strings.Split(s, "\r\n")
 	if lines == nil || len(lines) < 2 {
-		return nil, errors.New("too few lines in sdp")
+		return nil, fmt.Errorf("%w: too few lines in sdp", ErrInvalidSDP)
 	}
 
 	// We abstract the structure of the media lines so we need a place to store
@@ -235,7 +240,7 @@ func Parse(s string) (sdp *SDP, err error) {
 	fmtps = fmtps[0:fmtpcnt]
 
 	if !okConn || !okOrigin {
-		return nil, errors.New("sdp missing mandatory information")
+		return nil, fmt.Errorf("%w: sdp missing mandatory information", ErrInvalidSDP)
 	}
 
 	// Assemble audio/video information.
@@ -270,7 +275,7 @@ func Parse(s string) (sdp *SDP, err error) {
 	}
 
 	if sdp.Audio == nil && sdp.Video == nil {
-		return nil, errors.New("sdp has no audio or video information")
+		return nil, fmt.Errorf("%w: sdp has no audio or video information", ErrInvalidSDP)
 	}
 
 	return sdp, nil
@@ -392,13 +397,12 @@ func populateCodecs(media *Media, pts []uint8, rtpmaps, fmtps []string) (err err
 		}
 		if codec.Name == "" {
 			if isDynamicPT(pt) {
-				return errors.New("dynamic codec missing rtpmap")
+				return fmt.Errorf("%w: dynamic codec '%d' missing rtpmap", ErrInvalidSDP, pt)
 			} else {
 				if v, ok := StandardCodecs[pt]; ok {
 					*codec = v
 				} else {
-					return errors.New("unknown iana codec id: " +
-						strconv.Itoa(int(pt)))
+					return fmt.Errorf("%w: unknown iana codec id: %d", ErrInvalidSDP, pt)
 				}
 			}
 		}
@@ -425,13 +429,13 @@ func parseRtpmapInfo(codec *Codec, s string) (err error) {
 		codec.Name = toks[0]
 		codec.Rate, err = strconv.Atoi(toks[1])
 		if err != nil {
-			return errors.New("invalid rtpmap rate")
+			return fmt.Errorf("%w: invalid rtpmap rate", ErrInvalidSDP)
 		}
 		if len(toks) >= 3 {
 			codec.Param = toks[2]
 		}
 	} else {
-		return errors.New("invalid rtpmap")
+		return fmt.Errorf("%w: invalid rtpmap", ErrInvalidSDP)
 	}
 	return nil
 }
@@ -440,7 +444,7 @@ func parseRtpmapInfo(codec *Codec, s string) (err error) {
 func parseMediaInfo(s string) (port uint16, proto string, pts []uint8, err error) {
 	toks := strings.Split(s, " ")
 	if toks == nil || len(toks) < 3 {
-		return 0, "", nil, errors.New("invalid m= line")
+		return 0, "", nil, fmt.Errorf("%w: invalid m= line", ErrInvalidSDP)
 	}
 
 	// We don't care if they say like "666/2" which is a weird way of saying hey!
@@ -453,7 +457,7 @@ func parseMediaInfo(s string) (port uint16, proto string, pts []uint8, err error
 	// Convert port to int and check range.
 	portU, err := strconv.ParseUint(portS, 10, 16)
 	if err != nil || !(0 <= port && port <= 65535) {
-		return 0, "", nil, errors.New("invalid m= port")
+		return 0, "", nil, fmt.Errorf("%w: invalid m= port: %w", ErrInvalidSDP, err)
 	}
 	port = uint16(portU)
 
@@ -465,7 +469,7 @@ func parseMediaInfo(s string) (port uint16, proto string, pts []uint8, err error
 	for n, pt := range toks[2:] {
 		pt, err := strconv.ParseUint(pt, 10, 8)
 		if err != nil {
-			return 0, "", nil, errors.New("invalid pt in m= line")
+			return 0, "", nil, fmt.Errorf("%w: invalid pt in m= line: %w", ErrInvalidSDP, err)
 		}
 		pts[n] = byte(pt)
 	}
@@ -477,14 +481,14 @@ func parseMediaInfo(s string) (port uint16, proto string, pts []uint8, err error
 func parseConnLine(line string) (addr string, err error) {
 	toks := strings.Split(line[2:], " ")
 	if toks == nil || len(toks) != 3 {
-		return "", errors.New("invalid conn line")
+		return "", fmt.Errorf("%w: invalid conn line", ErrInvalidSDP)
 	}
 	if toks[0] != "IN" || (toks[1] != "IP4" && toks[1] != "IP6") {
-		return "", errors.New("unsupported conn net type")
+		return "", fmt.Errorf("%w: unsupported conn net type", ErrInvalidSDP)
 	}
 	addr = toks[2]
 	if n := strings.Index(addr, "/"); n >= 0 {
-		return "", errors.New("multicast address in c= line D:")
+		return "", fmt.Errorf("%w: multicast address in c= line D:", ErrInvalidSDP)
 	}
 	return addr, nil
 }
@@ -493,17 +497,17 @@ func parseConnLine(line string) (addr string, err error) {
 func parseOriginLine(origin *Origin, line string) error {
 	toks := strings.Split(line[2:], " ")
 	if toks == nil || len(toks) != 6 {
-		return errors.New("invalid origin line")
+		return fmt.Errorf("%w: invalid origin line", ErrInvalidSDP)
 	}
 	if toks[3] != "IN" || (toks[4] != "IP4" && toks[4] != "IP6") {
-		return errors.New("unsupported origin net type")
+		return fmt.Errorf("%w: unsupported origin net type", ErrInvalidSDP)
 	}
 	origin.User = toks[0]
 	origin.ID = toks[1]
 	origin.Version = toks[2]
 	origin.Addr = toks[5]
 	if n := strings.Index(origin.Addr, "/"); n >= 0 {
-		return errors.New("multicast address in o= line D:")
+		return fmt.Errorf("%w: multicast address in o= line D:", ErrInvalidSDP)
 	}
 	return nil
 }
