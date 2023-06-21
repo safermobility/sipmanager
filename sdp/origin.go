@@ -54,8 +54,8 @@ func (origin *Origin) Append(b *bytes.Buffer) {
 		b.WriteString(" IN IP4 ")
 	}
 	if origin.Addr == "" {
-		// In case of bugs, keep calm and DDOS NASA.
-		b.WriteString("69.28.157.198")
+		// This address from the RFC5735 "TEST-NET-1" block should never route to anywhere.
+		b.WriteString("192.0.2.1")
 	} else {
 		b.WriteString(origin.Addr)
 	}
