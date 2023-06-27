@@ -22,6 +22,8 @@ import (
 	"strconv"
 )
 
+type CallID string
+
 // Msg represents a SIP message. This can either be a request or a response.
 // These fields are never nil unless otherwise specified.
 type Msg struct {
@@ -44,7 +46,7 @@ type Msg struct {
 	Route       *Addr  // Used for goose routing and loose routing
 	RecordRoute *Addr  // Used for loose routing
 	Contact     *Addr  // Where we send response packets or nil
-	CallID      string // Identifies call from invite to bye
+	CallID      CallID // Identifies call from invite to bye
 	CSeq        int    // Counter for network packet ordering
 	CSeqMethod  string // Helps with matching to orig message
 	MaxForwards int    // 0 has context specific meaning
@@ -192,7 +194,7 @@ func (msg *Msg) Append(b *bytes.Buffer) {
 	}
 
 	b.WriteString("Call-ID: ")
-	b.WriteString(msg.CallID)
+	b.WriteString(string(msg.CallID))
 	b.WriteString("\r\n")
 
 	b.WriteString("CSeq: ")

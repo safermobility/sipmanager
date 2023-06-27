@@ -11860,7 +11860,7 @@ func ParseMsg(data []byte) (msg *Msg, err error) {
 	tr557:
 //line sip.rl:207
 
-		msg.CallID = string(data[mark:p])
+		msg.CallID = CallID(data[mark:p])
 
 		goto st381
 	tr643:
