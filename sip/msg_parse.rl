@@ -67,7 +67,7 @@ func ParseMsg(data []byte) (msg *Msg, err error) {
 			return nil, errors.New(fmt.Sprintf("Content-Length incorrect: %d != %d", clen, len(data) - p))
 		}
 		if ctype == sdp.ContentType {
-			ms, err := sdp.Parse(string(data[p:len(data)]))
+			ms, err := sdp.Parse(string(data[p:len(data)]), true)
 			if err != nil {
 				return nil, err
 			}

@@ -379,7 +379,7 @@ func sdpCompareMedia(t *testing.T, name string, correct, media *sdp.Media) {
 
 func TestParse(t *testing.T) {
 	for _, test := range sdpTests {
-		sdp, err := sdp.Parse(test.s)
+		sdp, err := sdp.Parse(test.s, false)
 		if err != nil {
 			if test.err == nil {
 				t.Errorf("%v", err)

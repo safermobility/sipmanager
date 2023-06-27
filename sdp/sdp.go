@@ -70,7 +70,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -84,7 +83,8 @@ const (
 )
 
 var (
-	ErrInvalidSDP = errors.New("invalid sdp")
+	ErrInvalidSDP    = errors.New("invalid sdp")
+	WarnMalformedSDP = errors.New("parsing issues in sdp")
 )
 
 // SDP represents a Session Description Protocol SIP payload.
@@ -121,9 +121,9 @@ func New(addr *net.UDPAddr, codecs ...Codec) *SDP {
 }
 
 // parses sdp message text into a happy data structure
-func Parse(s string) (sdp *SDP, err error) {
+func Parse(s string, strict bool) (sdp *SDP, err error) {
 	sdp = new(SDP)
-	sdp.Session = "pokémon"
+	sdp.Session = "-"
 	sdp.Time = "0 0"
 
 	// Eat version.
@@ -141,11 +141,12 @@ func Parse(s string) (sdp *SDP, err error) {
 	// We abstract the structure of the media lines so we need a place to store
 	// them before assembling the audio/video data structures.
 	var audioinfo, videoinfo string
-	rtpmaps := make([]string, len(lines))
-	rtpmapcnt := 0
-	fmtps := make([]string, len(lines))
-	fmtpcnt := 0
+	var rtpmapList []string
+	var fmtpList []string
 	sdp.Attrs = make([][2]string, 0, len(lines))
+
+	foundWarnings := false
+	warning := fmt.Errorf("%w; ", WarnMalformedSDP)
 
 	// Extract information from SDP.
 	var okOrigin, okConn bool
@@ -154,7 +155,12 @@ func Parse(s string) (sdp *SDP, err error) {
 		case line == "":
 			continue
 		case len(line) < 3 || line[1] != '=': // empty or invalid line
-			log.Println("Bad line in SDP:", line)
+			if strict {
+				return nil, fmt.Errorf("%w: invalid line '%s'", ErrInvalidSDP, line)
+			} else {
+				foundWarnings = true
+				warning = fmt.Errorf("%w; invalid line '%s'", warning, line)
+			}
 			continue
 		case line[0] == 'm': // media line
 			line = line[2:]
@@ -163,7 +169,12 @@ func Parse(s string) (sdp *SDP, err error) {
 			} else if strings.HasPrefix(line, "video ") {
 				videoinfo = line[6:]
 			} else {
-				log.Println("Unsupported SDP media line:", line)
+				if strict {
+					return nil, fmt.Errorf("%w: unsupported media line '%s'", ErrInvalidSDP, line)
+				} else {
+					foundWarnings = true
+					warning = fmt.Errorf("%w; unsupported media line '%s'", warning, line)
+				}
 			}
 		case line[0] == 's': // session line
 			sdp.Session = line[2:]
@@ -171,7 +182,12 @@ func Parse(s string) (sdp *SDP, err error) {
 			sdp.Time = line[2:]
 		case line[0] == 'c': // connect to this ip address
 			if okConn {
-				log.Println("Dropping extra c= line in sdp:", line)
+				if strict {
+					return nil, fmt.Errorf("%w: extra c= line '%s'", ErrInvalidSDP, line)
+				} else {
+					foundWarnings = true
+					warning = fmt.Errorf("%w; dropping extra c= line '%s'", warning, line)
+				}
 				continue
 			}
 			sdp.Addr, err = parseConnLine(line)
@@ -189,17 +205,20 @@ func Parse(s string) (sdp *SDP, err error) {
 			line = line[2:]
 			switch {
 			case strings.HasPrefix(line, "rtpmap:"):
-				rtpmaps[rtpmapcnt] = line[7:]
-				rtpmapcnt++
+				rtpmapList = append(rtpmapList, line[7:])
 			case strings.HasPrefix(line, "fmtp:"):
-				fmtps[fmtpcnt] = line[5:]
-				fmtpcnt++
+				fmtpList = append(fmtpList, line[5:])
 			case strings.HasPrefix(line, "ptime:"):
 				ptimeS := line[6:]
 				if ptime, err := strconv.Atoi(ptimeS); err == nil && ptime > 0 {
 					sdp.Ptime = ptime
 				} else {
-					log.Println("Invalid SDP Ptime value", ptimeS)
+					if strict {
+						return nil, fmt.Errorf("%w: invalid ptime value '%s'", ErrInvalidSDP, ptimeS)
+					} else {
+						foundWarnings = true
+						warning = fmt.Errorf("%w; invalid ptime value '%s'", warning, ptimeS)
+					}
 				}
 			case line == "sendrecv":
 			case line == "sendonly":
@@ -209,7 +228,12 @@ func Parse(s string) (sdp *SDP, err error) {
 			default:
 				if n := strings.Index(line, ":"); n >= 0 {
 					if n == 0 {
-						log.Println("Evil SDP attribute:", line)
+						if strict {
+							return nil, fmt.Errorf("%w: evil attribute '%s'", ErrInvalidSDP, line)
+						} else {
+							foundWarnings = true
+							warning = fmt.Errorf("%w; evil attribute '%s'", warning, line)
+						}
 					} else {
 						l := len(sdp.Attrs)
 						sdp.Attrs = sdp.Attrs[0 : l+1]
@@ -225,9 +249,13 @@ func Parse(s string) (sdp *SDP, err error) {
 
 			// Other unknown fields will be saved here
 			if n := strings.Index(line, "="); n >= 0 {
-
 				if n == 0 {
-					log.Println("Evil SDP field:", line)
+					if strict {
+						return nil, fmt.Errorf("%w: evil field '%s'", ErrInvalidSDP, line)
+					} else {
+						foundWarnings = true
+						warning = fmt.Errorf("%w; evil field '%s'", warning, line)
+					}
 				} else {
 					sdp.Other = append(sdp.Other, [2]string{line[0:n], line[n+1:]})
 				}
@@ -236,8 +264,6 @@ func Parse(s string) (sdp *SDP, err error) {
 			}
 		}
 	}
-	rtpmaps = rtpmaps[0:rtpmapcnt]
-	fmtps = fmtps[0:fmtpcnt]
 
 	if !okConn || !okOrigin {
 		return nil, fmt.Errorf("%w: sdp missing mandatory information", ErrInvalidSDP)
@@ -252,7 +278,7 @@ func Parse(s string) (sdp *SDP, err error) {
 		if err != nil {
 			return nil, err
 		}
-		err = populateCodecs(sdp.Audio, pts, rtpmaps, fmtps)
+		err = populateCodecs(sdp.Audio, pts, rtpmapList, fmtpList)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +292,7 @@ func Parse(s string) (sdp *SDP, err error) {
 		if err != nil {
 			return nil, err
 		}
-		err = populateCodecs(sdp.Video, pts, rtpmaps, fmtps)
+		err = populateCodecs(sdp.Video, pts, rtpmapList, fmtpList)
 		if err != nil {
 			return nil, err
 		}
@@ -276,6 +302,10 @@ func Parse(s string) (sdp *SDP, err error) {
 
 	if sdp.Audio == nil && sdp.Video == nil {
 		return nil, fmt.Errorf("%w: sdp has no audio or video information", ErrInvalidSDP)
+	}
+
+	if foundWarnings {
+		return sdp, warning
 	}
 
 	return sdp, nil
@@ -380,13 +410,13 @@ func (sdp *SDP) Append(b *bytes.Buffer) {
 //
 // If we couldn't find a matching rtpmap, iana standardized will be filled in
 // like magic.
-func populateCodecs(media *Media, pts []uint8, rtpmaps, fmtps []string) (err error) {
+func populateCodecs(media *Media, pts []uint8, rtpmapList, fmtpList []string) (err error) {
 	media.Codecs = make([]Codec, len(pts))
 	for n, pt := range pts {
 		codec := &media.Codecs[n]
 		codec.PT = pt
 		prefix := strconv.FormatInt(int64(pt), 10) + " "
-		for _, rtpmap := range rtpmaps {
+		for _, rtpmap := range rtpmapList {
 			if strings.HasPrefix(rtpmap, prefix) {
 				err = parseRtpmapInfo(codec, rtpmap[len(prefix):])
 				if err != nil {
@@ -406,7 +436,7 @@ func populateCodecs(media *Media, pts []uint8, rtpmaps, fmtps []string) (err err
 				}
 			}
 		}
-		for _, fmtp := range fmtps {
+		for _, fmtp := range fmtpList {
 			if strings.HasPrefix(fmtp, prefix) {
 				codec.Fmtp = fmtp[len(prefix):]
 				break
@@ -424,15 +454,15 @@ func isDynamicPT(pt uint8) bool {
 // Give me the part of the a=rtpmap line that looks like: "PCMU/8000" or
 // "L16/16000/2".
 func parseRtpmapInfo(codec *Codec, s string) (err error) {
-	toks := strings.Split(s, "/")
-	if toks != nil && len(toks) >= 2 {
-		codec.Name = toks[0]
-		codec.Rate, err = strconv.Atoi(toks[1])
+	tokens := strings.Split(s, "/")
+	if tokens != nil && len(tokens) >= 2 {
+		codec.Name = tokens[0]
+		codec.Rate, err = strconv.Atoi(tokens[1])
 		if err != nil {
 			return fmt.Errorf("%w: invalid rtpmap rate", ErrInvalidSDP)
 		}
-		if len(toks) >= 3 {
-			codec.Param = toks[2]
+		if len(tokens) >= 3 {
+			codec.Param = tokens[2]
 		}
 	} else {
 		return fmt.Errorf("%w: invalid rtpmap", ErrInvalidSDP)
@@ -442,14 +472,14 @@ func parseRtpmapInfo(codec *Codec, s string) (err error) {
 
 // Give me the part of an "m=" line that looks like: "30126 RTP/AVP 0 101".
 func parseMediaInfo(s string) (port uint16, proto string, pts []uint8, err error) {
-	toks := strings.Split(s, " ")
-	if toks == nil || len(toks) < 3 {
+	tokens := strings.Split(s, " ")
+	if tokens == nil || len(tokens) < 3 {
 		return 0, "", nil, fmt.Errorf("%w: invalid m= line", ErrInvalidSDP)
 	}
 
 	// We don't care if they say like "666/2" which is a weird way of saying hey!
 	// send ME rtcp too (I think).
-	portS := toks[0]
+	portS := tokens[0]
 	if n := strings.Index(portS, "/"); n > 0 {
 		portS = portS[0:n]
 	}
@@ -462,11 +492,11 @@ func parseMediaInfo(s string) (port uint16, proto string, pts []uint8, err error
 	port = uint16(portU)
 
 	// Is it rtp? srtp? udp? tcp? etc. (must be 3+ chars)
-	proto = toks[1]
+	proto = tokens[1]
 
 	// The rest of these tokens are payload types sorted by preference.
-	pts = make([]uint8, len(toks)-2)
-	for n, pt := range toks[2:] {
+	pts = make([]uint8, len(tokens)-2)
+	for n, pt := range tokens[2:] {
 		pt, err := strconv.ParseUint(pt, 10, 8)
 		if err != nil {
 			return 0, "", nil, fmt.Errorf("%w: invalid pt in m= line: %w", ErrInvalidSDP, err)
@@ -479,14 +509,14 @@ func parseMediaInfo(s string) (port uint16, proto string, pts []uint8, err error
 
 // I want a string that looks like "c=IN IP4 10.0.0.38".
 func parseConnLine(line string) (addr string, err error) {
-	toks := strings.Split(line[2:], " ")
-	if toks == nil || len(toks) != 3 {
+	tokens := strings.Split(line[2:], " ")
+	if tokens == nil || len(tokens) != 3 {
 		return "", fmt.Errorf("%w: invalid conn line", ErrInvalidSDP)
 	}
-	if toks[0] != "IN" || (toks[1] != "IP4" && toks[1] != "IP6") {
+	if tokens[0] != "IN" || (tokens[1] != "IP4" && tokens[1] != "IP6") {
 		return "", fmt.Errorf("%w: unsupported conn net type", ErrInvalidSDP)
 	}
-	addr = toks[2]
+	addr = tokens[2]
 	if n := strings.Index(addr, "/"); n >= 0 {
 		return "", fmt.Errorf("%w: multicast address in c= line D:", ErrInvalidSDP)
 	}
@@ -495,17 +525,17 @@ func parseConnLine(line string) (addr string, err error) {
 
 // I want a string that looks like "o=root 31589 31589 IN IP4 10.0.0.38".
 func parseOriginLine(origin *Origin, line string) error {
-	toks := strings.Split(line[2:], " ")
-	if toks == nil || len(toks) != 6 {
+	tokens := strings.Split(line[2:], " ")
+	if tokens == nil || len(tokens) != 6 {
 		return fmt.Errorf("%w: invalid origin line", ErrInvalidSDP)
 	}
-	if toks[3] != "IN" || (toks[4] != "IP4" && toks[4] != "IP6") {
+	if tokens[3] != "IN" || (tokens[4] != "IP4" && tokens[4] != "IP6") {
 		return fmt.Errorf("%w: unsupported origin net type", ErrInvalidSDP)
 	}
-	origin.User = toks[0]
-	origin.ID = toks[1]
-	origin.Version = toks[2]
-	origin.Addr = toks[5]
+	origin.User = tokens[0]
+	origin.ID = tokens[1]
+	origin.Version = tokens[2]
+	origin.Addr = tokens[5]
 	if n := strings.Index(origin.Addr, "/"); n >= 0 {
 		return fmt.Errorf("%w: multicast address in o= line D:", ErrInvalidSDP)
 	}
