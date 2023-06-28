@@ -97,7 +97,7 @@ var sdpTests = []sdpTest{
 				Addr:    "1.2.3.4",
 			},
 			Addr:    "1.2.3.4",
-			Session: "pokémon",
+			Session: "-",
 			Time:    "0 0",
 			Audio: &sdp.Media{
 				Proto: "RTP/AVP",
@@ -296,6 +296,267 @@ var sdpTests = []sdpTest{
 				},
 			},
 			Attrs: [][2]string{},
+		},
+	},
+
+	{
+		name: "Kurento RTP",
+		s: ("v=0\r\n" +
+			"o=- 3896395953 3896395953 IN IP4 172.31.6.171\r\n" +
+			"s=Kurento Media Server\r\n" +
+			"c=IN IP4 172.31.6.171\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 41094 RTP/AVPF 96 0 97\r\n" +
+			"a=rtpmap:96 opus/48000/2\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=rtpmap:97 AMR/8000\r\n" +
+			"m=video 51012 RTP/AVPF 102 103\r\n" +
+			"a=rtpmap:102 VP8/90000\r\n" +
+			"a=rtpmap:103 H264/90000\r\n" +
+			"a=fmtp:103 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\n" +
+			"a=setup:actpass\r\n" +
+			"a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n" +
+			"a=rtcp:41095\r\n" +
+			"a=mid:audio0\r\n" +
+			"a=ssrc:4148631681 cname:user1274683781@host-2b8db277\r\n" +
+			"a=setup:actpass\r\n" +
+			"a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n" +
+			"a=rtcp:51013\r\n" +
+			"a=mid:video0\r\n" +
+			"a=rtcp-fb:102 nack\r\n" +
+			"a=rtcp-fb:102 nack pli\r\n" +
+			"a=rtcp-fb:102 goog-remb\r\n" +
+			"a=rtcp-fb:102 ccm fir\r\n" +
+			"a=rtcp-fb:103 nack\r\n" +
+			"a=rtcp-fb:103 nack pli\r\n" +
+			"a=rtcp-fb:103 ccm fir\r\n" +
+			"a=ssrc:1326927367 cname:user1274683781@host-2b8db277\r\n" +
+			"a=sendrecv\r\n"),
+		sdp: &sdp.SDP{
+			Origin: sdp.Origin{
+				User:    "-",
+				ID:      "3896395953",
+				Version: "3896395953",
+				Addr:    "172.31.6.171",
+			},
+			Session: "Kurento Media Server",
+			Time:    "0 0",
+			Addr:    "172.31.6.171",
+			Audio: &sdp.Media{
+				Proto: "RTP/AVPF",
+				Port:  41094,
+				Codecs: []sdp.Codec{
+					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+					{PT: 0, Name: "PCMU", Rate: 8000},
+					{PT: 97, Name: "AMR", Rate: 8000},
+				},
+			},
+			Video: &sdp.Media{
+				Proto: "RTP/AVPF",
+				Port:  51012,
+				Codecs: []sdp.Codec{
+					{PT: 102, Name: "VP8", Rate: 90000},
+					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"},
+				},
+			},
+			Attrs: [][2]string{
+				{"setup", "actpass"},
+				{"extmap", "3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
+				{"rtcp", "41095"},
+				{"mid", "audio0"},
+				{"ssrc", "4148631681 cname:user1274683781@host-2b8db277"},
+				{"setup", "actpass"},
+				{"extmap", "3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
+				{"rtcp", "51013"},
+				{"mid", "video0"},
+				{"rtcp-fb", "102 nack"},
+				{"rtcp-fb", "102 nack pli"},
+				{"rtcp-fb", "102 goog-remb"},
+				{"rtcp-fb", "102 ccm fir"},
+				{"rtcp-fb", "103 nack"},
+				{"rtcp-fb", "103 nack pli"},
+				{"rtcp-fb", "103 ccm fir"},
+				{"ssrc", "1326927367 cname:user1274683781@host-2b8db277"},
+			},
+			Ptime: 0,
+		},
+	},
+
+	{
+		name: "Kurento via Kamailio",
+		s: ("v=0\r\n" +
+			"o=- 3896394990 3896394990 IN IP4 192.0.2.10\r\n" +
+			"s=Kurento Media Server\r\n" +
+			"c=IN IP4 192.0.2.10\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 50268 RTP/AVP 96 0\r\n" +
+			"a=rtpmap:96 opus/48000/2\r\n" +
+			"a=rtpmap:0 pcmu/8000\r\n" +
+			"a=sendrecv\r\n" +
+			"a=rtcp:50269\r\n" +
+			"m=video 50302 RTP/AVP 102 103\r\n" +
+			"a=ssrc:2163144404 cname:user539622331@host-6cf6de4c\r\n" +
+			"a=rtcp-fb:102 nack\r\n" +
+			"a=rtcp-fb:102 nack pli\r\n" +
+			"a=rtcp-fb:102 goog-remb\r\n" +
+			"a=rtcp-fb:102 ccm fir\r\n" +
+			"a=rtcp-fb:103 nack\r\n" +
+			"a=rtcp-fb:103 nack pli\r\n" +
+			"a=rtcp-fb:103 ccm fir\r\n" +
+			"a=ssrc:688187071 cname:user539622331@host-6cf6de4c\r\n" +
+			"a=mid:audio0\r\n" +
+			"a=rtpmap:102 VP8/90000\r\n" +
+			"a=rtpmap:103 H264/90000\r\n" +
+			"a=fmtp:103 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\n" +
+			"a=sendrecv\r\n" +
+			"a=rtcp:50303\r\n"),
+		sdp: &sdp.SDP{
+			Origin: sdp.Origin{
+				User:    "-",
+				ID:      "3896394990",
+				Version: "3896394990",
+				Addr:    "192.0.2.10",
+			},
+			Session: "Kurento Media Server",
+			Time:    "0 0",
+			Addr:    "192.0.2.10",
+			Audio: &sdp.Media{
+				Proto: "RTP/AVP",
+				Port:  50268,
+				Codecs: []sdp.Codec{
+					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+					{PT: 0, Name: "pcmu", Rate: 8000},
+				},
+			},
+			Video: &sdp.Media{
+				Proto: "RTP/AVP",
+				Port:  50302,
+				Codecs: []sdp.Codec{
+					{PT: 102, Name: "VP8", Rate: 90000},
+					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"},
+				},
+			},
+			Attrs: [][2]string{
+				{"rtcp", "50269"},
+				{"ssrc", "2163144404 cname:user539622331@host-6cf6de4c"},
+				{"rtcp-fb", "102 nack"},
+				{"rtcp-fb", "102 nack pli"},
+				{"rtcp-fb", "102 goog-remb"},
+				{"rtcp-fb", "102 ccm fir"},
+				{"rtcp-fb", "103 nack"},
+				{"rtcp-fb", "103 nack pli"},
+				{"rtcp-fb", "103 ccm fir"},
+				{"ssrc", "688187071 cname:user539622331@host-6cf6de4c"},
+				{"mid", "audio0"},
+				{"rtcp", "50303"},
+			},
+			Ptime: 0,
+		},
+	},
+
+	{
+		name: "Asterisk",
+		s: ("v=0\r\n" +
+			"o=- 3896394990 3896394992 IN IP4 192.0.2.200\r\n" +
+			"s=Asterisk\r\n" +
+			"c=IN IP4 192.0.2.200\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 19540 RTP/AVP 0 96\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=rtpmap:96 opus/48000/2\r\n" +
+			"a=ptime:20\r\n" +
+			"a=maxptime:60\r\n" +
+			"a=sendrecv\r\n" +
+			"m=video 19252 RTP/AVP 103 102\r\n" +
+			"a=rtpmap:103 H264/90000\r\n" +
+			"a=fmtp:103 packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F\r\n" +
+			"a=rtpmap:102 VP8/90000\r\n" +
+			"a=sendrecv"),
+		sdp: &sdp.SDP{
+			Origin: sdp.Origin{
+				User:    "-",
+				ID:      "3896394990",
+				Version: "3896394992",
+				Addr:    "192.0.2.200",
+			},
+			Session: "Asterisk",
+			Time:    "0 0",
+			Addr:    "192.0.2.200",
+			Audio: &sdp.Media{
+				Proto: "RTP/AVP",
+				Port:  19540,
+				Codecs: []sdp.Codec{
+					{PT: 0, Name: "PCMU", Rate: 8000},
+					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+				},
+			},
+			Video: &sdp.Media{
+				Proto: "RTP/AVP",
+				Port:  19252,
+				Codecs: []sdp.Codec{
+					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F"},
+					{PT: 102, Name: "VP8", Rate: 90000},
+				},
+			},
+			Attrs: [][2]string{
+				{"maxptime", "60"},
+			},
+			Ptime: 20,
+		},
+	},
+
+	{
+		name: "Asterisk via Kamailio",
+		s: ("v=0\r\n" +
+			"o=- 3896394990 3896394992 IN IP4 192.0.2.11\r\n" +
+			"s=Asterisk\r\n" +
+			"c=IN IP4 192.0.2.11\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 50286 RTP/AVPF 96\r\n" +
+			"a=maxptime:60\r\n" +
+			"a=rtpmap:96 opus/48000/2\r\n" +
+			"a=sendrecv\r\n" +
+			"a=rtcp:50287\r\n" +
+			"a=ptime:20\r\n" +
+			"m=video 50322 RTP/AVPF 103 102\r\n" +
+			"a=mid:audio0\r\n" +
+			"a=rtpmap:103 H264/90000\r\n" +
+			"a=rtpmap:102 VP8/90000\r\n" +
+			"a=fmtp:103 packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F\r\n" +
+			"a=sendrecv\r\n" +
+			"a=rtcp:50323"),
+		sdp: &sdp.SDP{
+			Origin: sdp.Origin{
+				User:    "-",
+				ID:      "3896394990",
+				Version: "3896394992",
+				Addr:    "192.0.2.11",
+			},
+			Session: "Asterisk",
+			Time:    "0 0",
+			Addr:    "192.0.2.11",
+			Audio: &sdp.Media{
+				Proto: "RTP/AVPF",
+				Port:  50286,
+				Codecs: []sdp.Codec{
+					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+				},
+			},
+			Video: &sdp.Media{
+				Proto: "RTP/AVPF",
+				Port:  50322,
+				Codecs: []sdp.Codec{
+					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F"},
+					{PT: 102, Name: "VP8", Rate: 90000},
+				},
+			},
+			Attrs: [][2]string{
+				{"maxptime", "60"},
+				{"rtcp", "50287"},
+				{"mid", "audio0"},
+				{"rtcp", "50323"},
+			},
+			Ptime: 20,
 		},
 	},
 }
