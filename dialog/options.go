@@ -3,6 +3,7 @@ package dialog
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"time"
 
@@ -12,7 +13,8 @@ import (
 type ManagerOption func(*Manager) error
 
 var (
-	ErrAddrPortAlreadySet = errors.New("socket listen address/port can only be set once")
+	ErrAddrPortAlreadySet   = errors.New("socket listen address/port can only be set once")
+	ErrProxyAddressNotValid = errors.New("proxy address is not valid")
 )
 
 // Select the local listening address and port
@@ -64,6 +66,17 @@ func WithListenString(address string) ManagerOption {
 func WithMaxResends(num int) ManagerOption {
 	return func(m *Manager) error {
 		m.maxResends = num
+		return nil
+	}
+}
+
+func WithProxyAddrPort(a netip.AddrPort) ManagerOption {
+	return func(m *Manager) error {
+		if !a.IsValid() {
+			return ErrProxyAddressNotValid
+		}
+
+		m.proxyAddress = net.UDPAddrFromAddrPort(a)
 		return nil
 	}
 }
