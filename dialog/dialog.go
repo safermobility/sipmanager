@@ -115,9 +115,9 @@ func (dls *dialogState) handleResponse(msg *sip.Msg) bool {
 		dls.checkSDP(msg)
 	}
 
-	// If we got a response to our last message, don't hold it to resend
 	dls.routes = nil
-	dls.request = nil
+	// If we got a response to our last message, we probably do not want to resend it.
+	// However, we cannot get rid of it yet because we may receive multiple responses (such as `Trying` then `Ringing`).
 	dls.requestTimer = nil
 	switch msg.Status {
 	case sip.StatusTrying:
@@ -380,7 +380,9 @@ func (dls *dialogState) populate(msg *sip.Msg) {
 }
 
 func (dls *dialogState) resendRequest() bool {
-	if dls.request == nil {
+	// If there's nothing to send, or if we explicitly cancelled the resend timer,
+	// skip the rest of this and report success.
+	if dls.request == nil || dls.requestTimer == nil {
 		return true
 	}
 	if dls.requestResends < dls.manager.maxResends {
@@ -426,7 +428,9 @@ func (dls *dialogState) sendResponse(msg *sip.Msg) bool {
 }
 
 func (dls *dialogState) resendResponse() bool {
-	if dls.response == nil {
+	// If there's nothing to send, or if we explicitly cancelled the resend timer,
+	// skip the rest of this and report success.
+	if dls.response == nil || dls.responseTimer == nil {
 		return true
 	}
 	if dls.responseResends < dls.manager.maxResends {
