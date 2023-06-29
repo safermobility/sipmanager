@@ -121,3 +121,11 @@ func append(buf []byte, s string) []byte {
 func Portstr(port uint16) string {
 	return strconv.FormatInt(int64(port), 10)
 }
+
+func Or5060(port uint16) uint16 {
+	if port == 0 {
+		return 5060
+	}
+
+	return port
+}

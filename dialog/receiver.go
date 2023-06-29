@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/safermobility/sipmanager/sip"
+	"github.com/safermobility/sipmanager/util"
 	"go.uber.org/zap"
 )
 
@@ -119,12 +120,7 @@ func (m *Manager) addTimestamp(msg *sip.Msg) {
 }
 
 func (m *Manager) IsLocalHostPort(uri *sip.URI) bool {
-	// Make sure to default uri.Port to `5060` if it is currently set to `0` (i.e. not provided)
-	messagePort := uri.Port
-	if messagePort == 0 {
-		messagePort = 5060
-	}
-	if uri.Host == m.PublicAddress().String() && messagePort == m.PublicPort() {
+	if uri.Host == m.PublicAddress().String() && util.Or5060(uri.Port) == m.PublicPort() {
 		return true
 	}
 

@@ -113,10 +113,7 @@ func RouteMessage(via *sip.Via, contact *sip.Addr, msg *sip.Msg) (host string, p
 
 func (m *Manager) RouteAddress(host string, port uint16, wantSRV bool) (routes *AddressRoute, err error) {
 	if net.ParseIP(host) != nil {
-		if port == 0 {
-			port = 5060
-		}
-		return &AddressRoute{Address: net.JoinHostPort(host, util.Portstr(port))}, nil
+		return &AddressRoute{Address: net.JoinHostPort(host, util.Portstr(util.Or5060(port)))}, nil
 	}
 	if port == 0 {
 		if wantSRV {

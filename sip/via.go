@@ -110,7 +110,7 @@ func (via *Via) Last() *Via {
 func (via *Via) CompareHostPort(other *Via) bool {
 	if via != nil && other != nil {
 		if util.EscapedIPv6(via.Host) == util.EscapedIPv6(other.Host) &&
-			via.Port == other.Port {
+			util.Or5060(via.Port) == util.Or5060(other.Port) {
 			return true
 		}
 	}
