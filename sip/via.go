@@ -60,7 +60,8 @@ func (via *Via) Append(b *bytes.Buffer) {
 	} else {
 		b.WriteString(via.Host)
 	}
-	if via.Port != 5060 {
+	// 5060 is default, and 0 means use the default
+	if via.Port != 5060 && via.Port != 0 {
 		b.WriteString(":")
 		b.WriteString(strconv.Itoa(int(via.Port)))
 	}
