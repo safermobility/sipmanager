@@ -41,6 +41,18 @@ func IsIPv6(ip string) bool {
 	return strings.Index(ip, ":") >= 0
 }
 
+func EscapedIPv6(ip string) string {
+	if !IsIPv6(ip) {
+		return ip
+	}
+
+	if ip[0] == '[' && ip[len(ip)-1] == ']' {
+		return ip
+	}
+
+	return "[" + ip + "]"
+}
+
 // Generate a secure random number between 0 and 50,000.
 func GenerateCSeq() int {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(50000))
