@@ -156,3 +156,7 @@ func (m *Manager) fixMessagesFromStrictRouters(lHost string, lPort uint16, msg *
 		m.logger.Debug("fixing request URI after strict router traversal", zap.Any("old", oldReq), zap.Any("new", newReq))
 	}
 }
+
+func (m *Manager) Close() error {
+	return m.sock.Close()
+}

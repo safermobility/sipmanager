@@ -23,7 +23,6 @@ type Manager struct {
 	proxyAddress     *net.UDPAddr   // If set, send all messages to the proxy instead of directly to the destination
 
 	sock    *net.UDPConn
-	errors  chan error
 	contact *sip.Addr // The local (or public IP, if set) Contact for this server
 	via     *sip.Via  // The local (or public IP, if set) Via for this server
 
@@ -77,6 +76,8 @@ func NewManager(opts ...ManagerOption) (*Manager, error) {
 		Host: m.PublicAddress().String(),
 		Port: m.PublicPort(),
 	}
+
+	go m.ReceiveMessages()
 
 	return m, nil
 }
