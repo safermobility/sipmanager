@@ -91,10 +91,6 @@ func (dls *dialogState) handleResponse(msg *sip.Msg) bool {
 			"received response doesn't match transaction",
 			zap.String("original_request", dls.request.String()),
 			zap.String("msg", msg.String()),
-			zap.String("req_via_host", dls.request.Via.Host),
-			zap.Uint16("req_via_port", dls.request.Via.Port),
-			zap.String("rsp_via_host", msg.Via.Last().Host),
-			zap.Uint16("rsp_via_port", msg.Via.Last().Port),
 		)
 		return true
 	}
@@ -119,7 +115,9 @@ func (dls *dialogState) handleResponse(msg *sip.Msg) bool {
 		dls.checkSDP(msg)
 	}
 
+	// If we got a response to our last message, don't hold it to resend
 	dls.routes = nil
+	dls.request = nil
 	dls.requestTimer = nil
 	switch msg.Status {
 	case sip.StatusTrying:
