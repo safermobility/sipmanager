@@ -91,11 +91,10 @@ func (dls *dialogState) handleResponse(msg *sip.Msg) bool {
 			"received response doesn't match transaction",
 			zap.String("original_request", dls.request.String()),
 			zap.String("msg", msg.String()),
-			zap.Bool("is_response", msg.IsResponse()),
-			zap.Bool("cseq_match", dls.request.CSeq == msg.CSeq),
-			zap.Bool("cseqmethod_match", dls.request.CSeqMethod == msg.CSeqMethod),
-			zap.Bool("via_hostport_match", msg.Via.Last().CompareHostPort(dls.request.Via)),
-			zap.Bool("via_branch_match", msg.Via.Last().CompareBranch(dls.request.Via)),
+			zap.String("req_via_host", dls.request.Via.Host),
+			zap.Uint16("req_via_port", dls.request.Via.Port),
+			zap.String("rsp_via_host", msg.Via.Last().Host),
+			zap.Uint16("rsp_via_port", msg.Via.Last().Port),
 		)
 		return true
 	}
