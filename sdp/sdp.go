@@ -273,28 +273,38 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 	var pts []uint8
 
 	if audioinfo != "" {
-		sdp.Audio = new(Media)
-		sdp.Audio.Port, sdp.Audio.Proto, pts, err = parseMediaInfo(audioinfo)
-		if err != nil {
-			return nil, err
-		}
-		err = populateCodecs(sdp.Audio, pts, rtpmapList, fmtpList)
-		if err != nil {
-			return nil, err
+		var audioPort uint16
+		var audioProto string
+		audioPort, audioProto, pts, err = parseMediaInfo(audioinfo)
+		if audioPort != 0 {
+			sdp.Audio = new(Media)
+			sdp.Audio.Port, sdp.Audio.Proto = audioPort, audioProto
+			if err != nil {
+				return nil, err
+			}
+			err = populateCodecs(sdp.Audio, pts, rtpmapList, fmtpList)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		sdp.Video = nil
 	}
 
 	if videoinfo != "" {
-		sdp.Video = new(Media)
-		sdp.Video.Port, sdp.Video.Proto, pts, err = parseMediaInfo(videoinfo)
-		if err != nil {
-			return nil, err
-		}
-		err = populateCodecs(sdp.Video, pts, rtpmapList, fmtpList)
-		if err != nil {
-			return nil, err
+		var videoPort uint16
+		var videoProto string
+		videoPort, videoProto, pts, err = parseMediaInfo(videoinfo)
+		if videoPort != 0 {
+			sdp.Video = new(Media)
+			sdp.Video.Port, sdp.Video.Proto = videoPort, videoProto
+			if err != nil {
+				return nil, err
+			}
+			err = populateCodecs(sdp.Video, pts, rtpmapList, fmtpList)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		sdp.Video = nil
