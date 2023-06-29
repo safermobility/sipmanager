@@ -35,6 +35,7 @@ type dialogState struct {
 	stateChan       chan<- Status
 	peerChan        chan<- *sdp.SDP
 	state           Status           // Current state of the dialog.
+	callID          sip.CallID       // The Call-ID header value to use for this dialog
 	dest            string           // Destination hostname (or IP).
 	addr            string           // Destination ip:port.
 	routes          *AddressRoute    // List of SRV addresses to attempt contacting, if not using a proxy.
@@ -55,14 +56,27 @@ func (m *Manager) NewDialog(invite *sip.Msg) (*Dialog, error) {
 	errChan := make(chan error)
 	stateChan := make(chan Status)
 	peerChan := make(chan *sdp.SDP)
+
+	var callID sip.CallID
+	if invite.CallID == "" {
+		callID = sip.CallID(util.GenerateCallID())
+		invite.CallID = callID
+	} else {
+		callID = invite.CallID
+	}
+
 	dls := &dialogState{
 		manager:   m,
 		errChan:   errChan,
 		stateChan: stateChan,
 		peerChan:  peerChan,
+		callID:    callID,
 		invite:    invite,
 	}
 	go dls.run()
+
+	m.dialogs[callID] = dls
+
 	return &Dialog{
 		OnErr:   errChan,
 		OnState: stateChan,
@@ -449,6 +463,7 @@ func (dls *dialogState) cleanup() {
 	close(dls.errChan)
 	close(dls.stateChan)
 	close(dls.peerChan)
+	delete(dls.manager.dialogs, dls.callID)
 }
 
 func (dls *dialogState) Hangup() bool {

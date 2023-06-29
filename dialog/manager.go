@@ -26,7 +26,7 @@ type Manager struct {
 	contact *sip.Addr // The local (or public IP, if set) Contact for this server
 	via     *sip.Via  // The local (or public IP, if set) Via for this server
 
-	dialogs map[sip.CallID]dialogState
+	dialogs map[sip.CallID]*dialogState
 }
 
 const (
@@ -45,7 +45,7 @@ func NewManager(opts ...ManagerOption) (*Manager, error) {
 		timestampTagging: defaultTimestampTagging,
 		userAgent:        defaultUserAgent,
 
-		dialogs: make(map[sip.CallID]dialogState),
+		dialogs: make(map[sip.CallID]*dialogState),
 	}
 
 	for _, opt := range opts {
