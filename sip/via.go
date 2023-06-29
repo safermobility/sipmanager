@@ -53,7 +53,13 @@ func (via *Via) Append(b *bytes.Buffer) {
 		b.WriteString(via.Transport)
 		b.WriteString(" ")
 	}
-	b.WriteString(via.Host)
+	if util.IsIPv6(via.Host) {
+		b.WriteByte('[')
+		b.WriteString(via.Host)
+		b.WriteByte(']')
+	} else {
+		b.WriteString(via.Host)
+	}
 	if via.Port != 5060 {
 		b.WriteString(":")
 		b.WriteString(strconv.Itoa(int(via.Port)))
