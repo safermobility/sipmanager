@@ -15,12 +15,20 @@ func (m *Manager) ReceiveMessages() {
 	for {
 		amt, addr, err := m.sock.ReadFromUDPAddrPort(buf)
 		if err != nil {
-			m.errors <- err
+			m.logger.Error(
+				"error reading from sip port",
+				zap.Error(err),
+				zap.String("source", addr.String()),
+			)
 			break
 		}
 		packet := buf[0:amt]
 		if m.rawTrace {
-			m.logger.Debug("incoming sip packet", zap.ByteString("packet", packet))
+			m.logger.Debug(
+				"incoming sip packet",
+				zap.ByteString("packet", packet),
+				zap.String("source", addr.String()),
+			)
 		}
 		msg, err := sip.ParseMsg(packet)
 		if err != nil {

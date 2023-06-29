@@ -46,7 +46,11 @@ func (m *Manager) Send(msg *sip.Msg) error {
 	packet := b.Bytes()
 
 	if m.rawTrace {
-		m.logger.Debug("incoming sip packet", zap.ByteString("packet", packet))
+		m.logger.Debug(
+			"outgoing sip packet",
+			zap.ByteString("packet", packet),
+			zap.String("destination", destination.String()),
+		)
 	}
 
 	_, err := m.sock.WriteToUDP(packet, destination)
