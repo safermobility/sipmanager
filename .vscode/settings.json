@@ -19,7 +19,8 @@
         "rtpmap",
         "speex",
         "srtp",
-        "srvs"
+        "srvs",
+        "UDPTL"
     ],
     "cSpell.allowCompoundWords": true
 }

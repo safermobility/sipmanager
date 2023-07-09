@@ -87,19 +87,27 @@ var (
 	WarnMalformedSDP = errors.New("parsing issues in sdp")
 )
 
+type MediaDirection string
+
+const (
+	SendRecv MediaDirection = "sendrecv"
+	SendOnly MediaDirection = "sendonly"
+	RecvOnly MediaDirection = "recvonly"
+	Inactive MediaDirection = "inactive"
+)
+
 // SDP represents a Session Description Protocol SIP payload.
 type SDP struct {
-	Origin   Origin      // This must always be present
-	Addr     string      // Connect to this IP; never blank (from c=)
-	Audio    *Media      // Non-nil if we can establish audio
-	Video    *Media      // Non-nil if we can establish video
-	Session  string      // s= Session Name (default "-")
-	Time     string      // t= Active Time (default "0 0")
-	Ptime    int         // Transmit frame every N milliseconds (default 20)
-	SendOnly bool        // True if 'a=sendonly' was specified in SDP
-	RecvOnly bool        // True if 'a=recvonly' was specified in SDP
-	Attrs    [][2]string // a= lines we don't recognize
-	Other    [][2]string // Other description
+	Origin    Origin         // This must always be present
+	Addr      string         // Connect to this IP; never blank (from c=)
+	Audio     *Media         // Non-nil if we can establish audio
+	Video     *Media         // Non-nil if we can establish video
+	Session   string         // s= Session Name (default "-")
+	Time      string         // t= Active Time (default "0 0")
+	Ptime     int            // Transmit frame every N milliseconds (default 20)
+	Direction MediaDirection // If 'a=sendonly', 'a=recvonly', or 'a=inactive' was specified in SDP
+	Attrs     [][2]string    // a= lines we don't recognize
+	Other     [][2]string    // Other description
 }
 
 // Easy way to create a basic, everyday SDP for VoIP.
@@ -141,6 +149,9 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 	// We abstract the structure of the media lines so we need a place to store
 	// them before assembling the audio/video data structures.
 	var audioinfo, videoinfo string
+	var audioConn, videoConn string
+	var audioDirection, videoDirection MediaDirection
+	var parsingAudio, parsingVideo bool
 	var rtpmapList []string
 	var fmtpList []string
 	sdp.Attrs = make([][2]string, 0, len(lines))
@@ -166,9 +177,15 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 			line = line[2:]
 			if strings.HasPrefix(line, "audio ") {
 				audioinfo = line[6:]
+				parsingAudio = true
+				parsingVideo = false
 			} else if strings.HasPrefix(line, "video ") {
 				videoinfo = line[6:]
+				parsingAudio = false
+				parsingVideo = true
 			} else {
+				parsingAudio = false
+				parsingVideo = false
 				if strict {
 					return nil, fmt.Errorf("%w: unsupported media line '%s'", ErrInvalidSDP, line)
 				} else {
@@ -181,20 +198,32 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 		case line[0] == 't': // active time
 			sdp.Time = line[2:]
 		case line[0] == 'c': // connect to this ip address
-			if okConn {
+			if okConn && !parsingAudio && !parsingVideo {
 				if strict {
-					return nil, fmt.Errorf("%w: extra c= line '%s'", ErrInvalidSDP, line)
+					return nil, fmt.Errorf("%w: extra c= line '%s' for session", ErrInvalidSDP, line)
 				} else {
 					foundWarnings = true
-					warning = fmt.Errorf("%w; dropping extra c= line '%s'", warning, line)
+					warning = fmt.Errorf("%w; dropping extra c= line '%s' for session", warning, line)
 				}
 				continue
 			}
-			sdp.Addr, err = parseConnLine(line)
-			if err != nil {
-				return nil, err
+			if parsingAudio {
+				audioConn, err = parseConnLine(line)
+				if err != nil {
+					return nil, err
+				}
+			} else if parsingVideo {
+				videoConn, err = parseConnLine(line)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				sdp.Addr, err = parseConnLine(line)
+				if err != nil {
+					return nil, err
+				}
+				okConn = true
 			}
-			okConn = true
 		case line[0] == 'o': // origin line
 			err = parseOriginLine(&sdp.Origin, line)
 			if err != nil {
@@ -220,11 +249,41 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 						warning = fmt.Errorf("%w; invalid ptime value '%s'", warning, ptimeS)
 					}
 				}
-			case line == "sendrecv":
-			case line == "sendonly":
-				sdp.SendOnly = true
-			case line == "recvonly":
-				sdp.RecvOnly = true
+			case line == "sendrecv", line == "sendonly", line == "recvonly", line == "inactive":
+				if parsingAudio {
+					if audioDirection != "" {
+						if strict {
+							return nil, fmt.Errorf("%w: extra media direction line '%s' for audio", ErrInvalidSDP, line)
+						} else {
+							foundWarnings = true
+							warning = fmt.Errorf("%w; dropping extra media direction line '%s' for audio", warning, line)
+						}
+						continue
+					}
+					audioDirection = MediaDirection(line)
+				} else if parsingVideo {
+					if videoDirection != "" {
+						if strict {
+							return nil, fmt.Errorf("%w: extra media direction line '%s' for video", ErrInvalidSDP, line)
+						} else {
+							foundWarnings = true
+							warning = fmt.Errorf("%w; dropping extra media direction line '%s' for video", warning, line)
+						}
+						continue
+					}
+					videoDirection = MediaDirection(line)
+				} else {
+					if sdp.Direction != "" {
+						if strict {
+							return nil, fmt.Errorf("%w: extra media direction line '%s' for session", ErrInvalidSDP, line)
+						} else {
+							foundWarnings = true
+							warning = fmt.Errorf("%w; dropping extra media direction line '%s' for session", warning, line)
+						}
+						continue
+					}
+					sdp.Direction = MediaDirection(line)
+				}
 			default:
 				if n := strings.Index(line, ":"); n >= 0 {
 					if n == 0 {
@@ -286,9 +345,13 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 			if err != nil {
 				return nil, err
 			}
+
+			if audioConn != "" {
+				sdp.Audio.Addr = audioConn
+			}
 		}
 	} else {
-		sdp.Video = nil
+		sdp.Audio = nil
 	}
 
 	if videoinfo != "" {
@@ -304,6 +367,10 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 			err = populateCodecs(sdp.Video, pts, rtpmapList, fmtpList)
 			if err != nil {
 				return nil, err
+			}
+
+			if videoConn != "" {
+				sdp.Video.Addr = videoConn
 			}
 		}
 	} else {
@@ -396,10 +463,10 @@ func (sdp *SDP) Append(b *bytes.Buffer) {
 		b.WriteString(strconv.Itoa(sdp.Ptime))
 		b.WriteString("\r\n")
 	}
-	if sdp.SendOnly {
-		b.WriteString("a=sendonly\r\n")
-	} else if sdp.RecvOnly {
-		b.WriteString("a=recvonly\r\n")
+	if sdp.Direction != "" {
+		b.WriteString("a=")
+		b.WriteString(string(sdp.Direction))
+		b.WriteString("\r\n")
 	} else {
 		b.WriteString("a=sendrecv\r\n")
 	}

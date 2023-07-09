@@ -17,14 +17,18 @@ package sdp
 import (
 	"bytes"
 	"strconv"
+
+	"github.com/safermobility/sipmanager/util"
 )
 
 // Media is a high level representation of the c=/m=/a= lines for describing a
 // specific type of media. Only "audio" and "video" are supported at this time.
 type Media struct {
-	Proto  string  // RTP, SRTP, UDP, UDPTL, TCP, TLS, etc.
-	Port   uint16  // Port number (0 - 2^16-1)
-	Codecs []Codec // Collection of codecs of a specific type.
+	Proto     string  // RTP, SRTP, UDP, UDPTL, TCP, TLS, etc.
+	Port      uint16  // Port number (0 - 2^16-1)
+	Addr      string  // The address from the media-specific `c=` line, if present
+	Codecs    []Codec // Collection of codecs of a specific type.
+	Direction MediaDirection
 }
 
 func (media *Media) Append(type_ string, b *bytes.Buffer) {
@@ -43,6 +47,24 @@ func (media *Media) Append(type_ string, b *bytes.Buffer) {
 		b.WriteString(strconv.FormatInt(int64(codec.PT), 10))
 	}
 	b.WriteString("\r\n")
+
+	// If this media description has its own `c=` line
+	if media.Addr != "" {
+		if util.IsIPv6(media.Addr) {
+			b.WriteString("c=IN IP6 ")
+		} else {
+			b.WriteString("c=IN IP4 ")
+		}
+		b.WriteString(media.Addr)
+		b.WriteString("\r\n")
+	}
+
+	if media.Direction != "" {
+		b.WriteString("a=")
+		b.WriteString(string(media.Direction))
+		b.WriteString("\r\n")
+	}
+
 	for _, codec := range media.Codecs {
 		codec.Append(b)
 	}

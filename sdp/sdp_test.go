@@ -284,16 +284,16 @@ var sdpTests = []sdpTest{
 				Version: "3366701334",
 				Addr:    "10.11.34.37",
 			},
-			Session:  "squigglies",
-			Time:     "0 0",
-			Addr:     "dead:beef::666",
-			SendOnly: true,
+			Session: "squigglies",
+			Time:    "0 0",
+			Addr:    "dead:beef::666",
 			Audio: &sdp.Media{
 				Proto: "TCP/IP",
 				Port:  80,
 				Codecs: []sdp.Codec{
 					{PT: 111, Name: "MP3", Rate: 44100, Param: "2"},
 				},
+				Direction: sdp.SendOnly,
 			},
 			Attrs: [][2]string{},
 		},
@@ -471,7 +471,7 @@ var sdpTests = []sdpTest{
 			"a=rtpmap:103 H264/90000\r\n" +
 			"a=fmtp:103 packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F\r\n" +
 			"a=rtpmap:102 VP8/90000\r\n" +
-			"a=sendrecv"),
+			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
 			Origin: sdp.Origin{
 				User:    "-",
@@ -524,7 +524,7 @@ var sdpTests = []sdpTest{
 			"a=rtpmap:102 VP8/90000\r\n" +
 			"a=fmtp:103 packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F\r\n" +
 			"a=sendrecv\r\n" +
-			"a=rtcp:50323"),
+			"a=rtcp:50323\r\n"),
 		sdp: &sdp.SDP{
 			Origin: sdp.Origin{
 				User:    "-",
@@ -576,7 +576,7 @@ var sdpTests = []sdpTest{
 			"c=IN IP4 0.0.0.0\r\n" +
 			"a=inactive\r\n" +
 			"a=rtpmap:103 H264/90000\r\n" +
-			"a=ptime:20"),
+			"a=ptime:20\r\n"),
 		s2: ("v=0\r\n" +
 			"o=- 1688577024 2 IN IP4 10.50.109.100\r\n" +
 			"s=-\r\n" +
@@ -585,7 +585,7 @@ var sdpTests = []sdpTest{
 			"m=audio 36568 RTP/AVP 0\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"a=ptime:20\r\n" +
-			"a=sendrecv"),
+			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
 			Origin: sdp.Origin{
 				User:    "-",
@@ -604,12 +604,7 @@ var sdpTests = []sdpTest{
 				},
 			},
 			Video: nil,
-			Attrs: [][2]string{
-				{"inactive", ""},
-				// {"rtcp", "50287"},
-				// {"mid", "audio0"},
-				// {"rtcp", "50323"},
-			},
+			Attrs: [][2]string{},
 			Ptime: 20,
 		},
 	},
@@ -729,11 +724,8 @@ func TestParse(t *testing.T) {
 		if test.sdp.Ptime != sdp.Ptime {
 			t.Error(test.name, "Ptime", test.sdp.Ptime, "!=", sdp.Ptime)
 		}
-		if test.sdp.RecvOnly != sdp.RecvOnly {
-			t.Error(test.name, "RecvOnly doesn't match")
-		}
-		if test.sdp.SendOnly != sdp.SendOnly {
-			t.Error(test.name, "SendOnly doesn't match")
+		if test.sdp.Direction != sdp.Direction {
+			t.Error(test.name, "Direction doesn't match: expected", test.sdp.Direction, "was", sdp.Direction)
 		}
 
 		if test.sdp.Attrs != nil {
@@ -769,7 +761,7 @@ func TestFormatSDP(t *testing.T) {
 			s = test.s2
 		}
 		if s != sdp {
-			t.Error("\n" + test.name + "\n\n" + s + "\nIS NOT\n\n" + sdp)
+			t.Errorf("\nTest: %s\n\nExpected:\n%+v\n\nFound:\n%+v\n\n", test.name, s, sdp)
 			fmt.Printf("%s", sdp)
 		}
 	}
