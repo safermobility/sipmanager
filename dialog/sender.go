@@ -7,7 +7,8 @@ import (
 	"strconv"
 
 	"github.com/safermobility/sipmanager/sip"
-	"go.uber.org/zap"
+	"github.com/safermobility/sipmanager/util"
+	"golang.org/x/exp/slog"
 )
 
 var (
@@ -48,8 +49,8 @@ func (m *Manager) Send(msg *sip.Msg) error {
 	if m.rawTrace {
 		m.logger.Debug(
 			"outgoing sip packet",
-			zap.ByteString("packet", packet),
-			zap.String("destination", destination.String()),
+			util.SlogByteString("packet", packet),
+			slog.String("destination", destination.String()),
 		)
 	}
 

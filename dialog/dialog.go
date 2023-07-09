@@ -8,7 +8,7 @@ import (
 	"github.com/safermobility/sipmanager/sdp"
 	"github.com/safermobility/sipmanager/sip"
 	"github.com/safermobility/sipmanager/util"
-	"go.uber.org/zap"
+	"golang.org/x/exp/slog"
 )
 
 type Status int
@@ -89,8 +89,8 @@ func (dls *dialogState) handleResponse(msg *sip.Msg) bool {
 	if !ResponseMatch(dls.request, msg) {
 		dls.manager.logger.Warn(
 			"received response doesn't match transaction",
-			zap.String("original_request", dls.request.String()),
-			zap.String("msg", msg.String()),
+			slog.String("original_request", dls.request.String()),
+			slog.String("msg", msg.String()),
 		)
 		return true
 	}
@@ -103,8 +103,8 @@ func (dls *dialogState) handleResponse(msg *sip.Msg) bool {
 		if err := dls.manager.Send(dls.manager.NewAck(msg, dls.request)); err != nil {
 			dls.manager.logger.Error(
 				"unable to send ACK message",
-				zap.Error(err),
-				zap.String("msg", msg.String()),
+				util.SlogError(err),
+				slog.String("msg", msg.String()),
 			)
 			dls.errChan <- fmt.Errorf("unable to send ACK message: %w", err)
 			return false
@@ -139,10 +139,10 @@ func (dls *dialogState) handleResponse(msg *sip.Msg) bool {
 		if dls.request == dls.invite {
 			dls.manager.logger.Error(
 				"received '503 Service Unavailable' reply to 'INVITE'",
-				zap.String("packet", msg.String()),
-				zap.String("invite", dls.invite.String()),
-				zap.String("dest", dls.dest),
-				zap.String("addr", dls.addr),
+				slog.String("packet", msg.String()),
+				slog.String("invite", dls.invite.String()),
+				slog.String("dest", dls.dest),
+				slog.String("addr", dls.addr),
 			)
 			return dls.popRoute()
 		} else {
@@ -168,8 +168,8 @@ func (dls *dialogState) handleRequest(msg *sip.Msg) bool {
 		if err := dls.manager.Send(dls.manager.NewResponse(msg, sip.StatusTooManyHops)); err != nil {
 			dls.manager.logger.Error(
 				"unable to send '483 Too Many Hops' reply to incoming message",
-				zap.Error(err),
-				zap.String("packet", msg.String()),
+				util.SlogError(err),
+				slog.String("packet", msg.String()),
 			)
 			return false
 		}
@@ -185,8 +185,8 @@ func (dls *dialogState) handleRequest(msg *sip.Msg) bool {
 			if err := dls.manager.Send(dls.manager.NewResponse(msg, sip.StatusInternalServerError)); err != nil {
 				dls.manager.logger.Error(
 					"unable to send '500 Internal Server Error' reply to incoming out-of-sequence message",
-					zap.Error(err),
-					zap.String("packet", msg.String()),
+					util.SlogError(err),
+					slog.String("packet", msg.String()),
 				)
 				return false
 			}
@@ -200,8 +200,8 @@ func (dls *dialogState) handleRequest(msg *sip.Msg) bool {
 		if err := dls.manager.Send(dls.manager.NewResponse(msg, sip.StatusOK)); err != nil {
 			dls.manager.logger.Error(
 				"unable to send '200 OK' reply to incoming 'BYE' message",
-				zap.Error(err),
-				zap.String("packet", msg.String()),
+				util.SlogError(err),
+				slog.String("packet", msg.String()),
 			)
 			return false
 		}
@@ -211,8 +211,8 @@ func (dls *dialogState) handleRequest(msg *sip.Msg) bool {
 		if err := dls.manager.Send(dls.manager.NewResponse(msg, sip.StatusOK)); err != nil {
 			dls.manager.logger.Error(
 				"unable to send '200 OK' reply to incoming 'OPTIONS' message",
-				zap.Error(err),
-				zap.String("packet", msg.String()),
+				util.SlogError(err),
+				slog.String("packet", msg.String()),
 			)
 			return false
 		}
@@ -229,8 +229,8 @@ func (dls *dialogState) handleRequest(msg *sip.Msg) bool {
 		if err := dls.manager.Send(dls.manager.NewResponse(msg, sip.StatusMethodNotAllowed)); err != nil {
 			dls.manager.logger.Error(
 				"unable to send '405 Method Not Allowed' reply to incoming message",
-				zap.Error(err),
-				zap.String("packet", msg.String()),
+				util.SlogError(err),
+				slog.String("packet", msg.String()),
 			)
 			return false
 		}
@@ -316,8 +316,8 @@ func (dls *dialogState) popRoute() bool {
 	if err := dls.manager.Send(dls.request); err != nil {
 		dls.manager.logger.Error(
 			"error sending request message",
-			zap.Int("resends", dls.requestResends),
-			zap.String("packet", dls.request.String()),
+			slog.Int("resends", dls.requestResends),
+			slog.String("packet", dls.request.String()),
 		)
 		return false
 	}
@@ -389,8 +389,8 @@ func (dls *dialogState) resendRequest() bool {
 		if err := dls.manager.Send(dls.request); err != nil {
 			dls.manager.logger.Error(
 				"unable to resend message",
-				zap.Error(err),
-				zap.String("packet", dls.request.String()),
+				util.SlogError(err),
+				slog.String("packet", dls.request.String()),
 			)
 			return false
 		}
@@ -399,10 +399,10 @@ func (dls *dialogState) resendRequest() bool {
 	} else {
 		dls.manager.logger.Error(
 			"timeout sending request message",
-			zap.Int("resends", dls.requestResends),
-			zap.String("packet", dls.request.String()),
-			zap.String("dest", dls.dest),
-			zap.String("addr", dls.addr),
+			slog.Int("resends", dls.requestResends),
+			slog.String("packet", dls.request.String()),
+			slog.String("dest", dls.dest),
+			slog.String("addr", dls.addr),
 		)
 		if !dls.popRoute() {
 			return false
@@ -419,8 +419,8 @@ func (dls *dialogState) sendResponse(msg *sip.Msg) bool {
 	if err := dls.manager.Send(dls.response); err != nil {
 		dls.manager.logger.Error(
 			"unable to send response to INVITE",
-			zap.Error(err),
-			zap.String("packet", msg.String()),
+			util.SlogError(err),
+			slog.String("packet", msg.String()),
 		)
 		return false
 	}
@@ -437,8 +437,8 @@ func (dls *dialogState) resendResponse() bool {
 		if err := dls.manager.Send(dls.response); err != nil {
 			dls.manager.logger.Error(
 				"unable to resend response",
-				zap.Error(err),
-				zap.String("packet", dls.response.String()),
+				util.SlogError(err),
+				slog.String("packet", dls.response.String()),
 			)
 			return false
 		}
@@ -448,10 +448,10 @@ func (dls *dialogState) resendResponse() bool {
 		// TODO(jart): If resending INVITE 200 OK, start sending BYE.
 		dls.manager.logger.Error(
 			"timeout sending response message",
-			zap.Int("resends", dls.responseResends),
-			zap.String("packet", dls.response.String()),
-			zap.String("dest", dls.dest),
-			zap.String("addr", dls.addr),
+			slog.Int("resends", dls.responseResends),
+			slog.String("packet", dls.response.String()),
+			slog.String("dest", dls.dest),
+			slog.String("addr", dls.addr),
 		)
 		if !dls.popRoute() {
 			return false
@@ -478,8 +478,8 @@ func (dls *dialogState) Hangup() bool {
 		if err := dls.manager.Send(dls.manager.NewCancel(dls.invite)); err != nil {
 			dls.manager.logger.Error(
 				"unable to send 'CANCEL' message",
-				zap.Error(err),
-				zap.String("invite", dls.invite.String()),
+				util.SlogError(err),
+				slog.String("invite", dls.invite.String()),
 			)
 			return false
 		}
@@ -487,7 +487,7 @@ func (dls *dialogState) Hangup() bool {
 	case StatusAnswered:
 		return dls.sendRequest(dls.manager.NewBye(dls.invite, dls.remote, &dls.lSeq))
 	case StatusHangup:
-		dls.manager.logger.DPanic(
+		dls.manager.logger.Error(
 			"trying to hang up a call that is already hung up",
 		)
 		return true

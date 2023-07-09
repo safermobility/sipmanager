@@ -16,7 +16,7 @@ package dialog
 
 import (
 	"github.com/safermobility/sipmanager/sip"
-	"go.uber.org/zap"
+	"golang.org/x/exp/slog"
 )
 
 const (
@@ -61,7 +61,7 @@ func (m *Manager) NewCancel(invite *sip.Msg) *sip.Msg {
 	if invite.IsResponse() || invite.Method != sip.MethodInvite {
 		m.logger.Error(
 			"trying to CANCEL something that is not an INVITE",
-			zap.String("invite", invite.String()),
+			slog.String("invite", invite.String()),
 		)
 	}
 

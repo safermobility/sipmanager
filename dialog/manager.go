@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/safermobility/sipmanager/sip"
-	"go.uber.org/zap"
+	"golang.org/x/exp/slog"
 )
 
 type Manager struct {
-	logger *zap.Logger
+	logger *slog.Logger
 
 	// looseSignaling bool // Permit SIP messages from servers other than the next hop
 	maxResends       int            // How many times to try resending non-ACK'ed packets

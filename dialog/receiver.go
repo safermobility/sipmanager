@@ -8,18 +8,19 @@ import (
 
 	"github.com/safermobility/sipmanager/sip"
 	"github.com/safermobility/sipmanager/util"
-	"go.uber.org/zap"
+	"golang.org/x/exp/slog"
 )
 
 func (m *Manager) ReceiveMessages() {
 	buf := make([]byte, 2048)
+	m.logger.Debug("starting read from UDP port", slog.String("listen", m.listenAddress))
 	for {
 		amt, addr, err := m.sock.ReadFromUDPAddrPort(buf)
 		if err != nil {
 			m.logger.Error(
 				"error reading from sip port",
-				zap.Error(err),
-				zap.String("source", addr.String()),
+				util.SlogError(err),
+				slog.String("source", addr.String()),
 			)
 			break
 		}
@@ -27,13 +28,13 @@ func (m *Manager) ReceiveMessages() {
 		if m.rawTrace {
 			m.logger.Debug(
 				"incoming sip packet",
-				zap.ByteString("packet", packet),
-				zap.String("source", addr.String()),
+				util.SlogByteString("packet", packet),
+				slog.String("source", addr.String()),
 			)
 		}
 		msg, err := sip.ParseMsg(packet)
 		if err != nil {
-			m.logger.Warn("unable to parse sip message", zap.Error(err), zap.ByteString("packet", packet))
+			m.logger.Warn("unable to parse sip message", util.SlogError(err), util.SlogByteString("packet", packet))
 		}
 		m.addReceived(msg, addr)
 		m.addTimestamp(msg)
@@ -45,16 +46,21 @@ func (m *Manager) ReceiveMessages() {
 
 		m.HandleIncomingMessage(msg)
 	}
+	m.logger.Debug("finished read from UDP port", slog.String("listen", m.listenAddress))
 }
 
 // Check if the incoming message is part of an existing transaction
 // and send it to that transaction object to be handled
 func (m *Manager) HandleIncomingMessage(msg *sip.Msg) {
 	if msg.VersionMajor != 2 || msg.VersionMinor != 0 {
-		m.logger.Warn("received unknown SIP version in incoming message", zap.String("version", fmt.Sprintf("%d/%d", msg.VersionMajor, msg.VersionMinor)))
+		m.logger.Warn("received unknown SIP version in incoming message", slog.String("version", fmt.Sprintf("%d/%d", msg.VersionMajor, msg.VersionMinor)))
 		err := m.Send(m.NewResponse(msg, sip.StatusVersionNotSupported))
 		if err != nil {
-			m.logger.Error("unable to send '505 Version Not Supported' reply to incoming message", zap.Error(err), zap.String("packet", msg.String()))
+			m.logger.Error(
+				"unable to send '505 Version Not Supported' reply to incoming message",
+				util.SlogError(err),
+				slog.String("packet", msg.String()),
+			)
 		}
 		return
 	}
@@ -69,9 +75,13 @@ func (m *Manager) HandleIncomingMessage(msg *sip.Msg) {
 	}
 
 	err := m.Send(m.NewResponse(msg, sip.StatusCallTransactionDoesNotExist))
-	m.logger.Warn("received incoming message for unknown transaction", zap.String("call-id", string(msg.CallID)))
+	m.logger.Warn("received incoming message for unknown transaction", slog.String("call-id", string(msg.CallID)))
 	if err != nil {
-		m.logger.Error("unable to send '481 Call Transaction Does Not Exist' reply to incoming message", zap.Error(err), zap.String("packet", msg.String()))
+		m.logger.Error(
+			"unable to send '481 Call Transaction Does Not Exist' reply to incoming message",
+			util.SlogError(err),
+			slog.String("packet", msg.String()),
+		)
 	}
 }
 
@@ -149,7 +159,7 @@ func (m *Manager) fixMessagesFromStrictRouters(lHost string, lPort uint16, msg *
 			seclast.Next = nil
 			msg.Route.Last()
 		}
-		m.logger.Debug("fixing request URI after strict router traversal", zap.Any("old", oldReq), zap.Any("new", newReq))
+		m.logger.Debug("fixing request URI after strict router traversal", slog.Any("old", oldReq), slog.Any("new", newReq))
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"net/netip"
 	"time"
 
-	"go.uber.org/zap"
+	"golang.org/x/exp/slog"
 )
 
 type ManagerOption func(*Manager) error
@@ -134,9 +134,12 @@ func WithUserAgent(ua string) ManagerOption {
 	}
 }
 
-func WithZapNamedLogger(logger *zap.Logger, name string) ManagerOption {
+func WithGroupLogger(logger *slog.Logger, groupName string) ManagerOption {
 	return func(m *Manager) error {
-		m.logger = logger.Named(name)
+		if groupName != "" {
+			logger = logger.WithGroup(groupName)
+		}
+		m.logger = logger
 		return nil
 	}
 }

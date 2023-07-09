@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"golang.org/x/exp/slog"
 )
 
 // Return true if error is ICMP connection refused.
@@ -128,4 +130,12 @@ func Or5060(port uint16) uint16 {
 	}
 
 	return port
+}
+
+func SlogByteString(key string, str []byte) slog.Attr {
+	return slog.String(key, string(str))
+}
+
+func SlogError(err error) slog.Attr {
+	return slog.String("error", err.Error())
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/safermobility/sipmanager/sip"
 	"github.com/safermobility/sipmanager/util"
-	"go.uber.org/zap"
+	"golang.org/x/exp/slog"
 )
 
 type AddressRoute struct {
@@ -129,15 +129,15 @@ func (m *Manager) RouteAddress(host string, port uint16, wantSRV bool) (routes *
 				}
 				m.logger.Debug(
 					"found route to service",
-					zap.String("host", host),
-					zap.Strings("service", serviceAddrs),
+					slog.String("host", host),
+					slog.Any("service", serviceAddrs),
 				)
 				return routes, nil
 			}
 			m.logger.Error(
 				"unable to look up SIP/UDP service records",
-				zap.Error(err),
-				zap.String("host", host),
+				util.SlogError(err),
+				slog.String("host", host),
 			)
 		}
 		port = 5060
