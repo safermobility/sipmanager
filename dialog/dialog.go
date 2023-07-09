@@ -26,6 +26,9 @@ type Dialog struct {
 	OnErr   <-chan error
 	OnState <-chan Status
 	OnPeer  <-chan *sdp.SDP
+
+	doHangup   chan<- struct{}
+	hangupDone bool
 }
 
 // The "internal" interface of a SIP dialog
@@ -34,6 +37,7 @@ type dialogState struct {
 	errChan         chan<- error
 	stateChan       chan<- Status
 	peerChan        chan<- *sdp.SDP
+	hangupChan      <-chan struct{}
 	state           Status           // Current state of the dialog.
 	callID          sip.CallID       // The Call-ID header value to use for this dialog
 	dest            string           // Destination hostname (or IP).
@@ -56,6 +60,7 @@ func (m *Manager) NewDialog(invite *sip.Msg) (*Dialog, error) {
 	errChan := make(chan error)
 	stateChan := make(chan Status)
 	peerChan := make(chan *sdp.SDP)
+	hangupChan := make(chan struct{})
 
 	var callID sip.CallID
 	if invite.CallID == "" {
@@ -66,21 +71,23 @@ func (m *Manager) NewDialog(invite *sip.Msg) (*Dialog, error) {
 	}
 
 	dls := &dialogState{
-		manager:   m,
-		errChan:   errChan,
-		stateChan: stateChan,
-		peerChan:  peerChan,
-		callID:    callID,
-		invite:    invite,
+		manager:    m,
+		errChan:    errChan,
+		stateChan:  stateChan,
+		peerChan:   peerChan,
+		callID:     callID,
+		invite:     invite,
+		hangupChan: hangupChan,
 	}
 	go dls.run()
 
 	m.dialogs[callID] = dls
 
 	return &Dialog{
-		OnErr:   errChan,
-		OnState: stateChan,
-		OnPeer:  peerChan,
+		OnErr:    errChan,
+		OnState:  stateChan,
+		OnPeer:   peerChan,
+		doHangup: hangupChan,
 	}, nil
 }
 
@@ -252,7 +259,7 @@ func (dls *dialogState) run() {
 		return
 	}
 
-	// This loop handles re-sending non-ACK'ed messages
+	// This loop handles re-sending non-ACK'ed messages and hangup requests
 	// It ends if there are errors doing so
 	for {
 		select {
@@ -262,6 +269,10 @@ func (dls *dialogState) run() {
 			}
 		case <-dls.responseTimer:
 			if !dls.resendResponse() {
+				return
+			}
+		case <-dls.hangupChan:
+			if !dls.hangup() {
 				return
 			}
 		}
@@ -472,7 +483,7 @@ func (dls *dialogState) cleanup() {
 	delete(dls.manager.dialogs, dls.callID)
 }
 
-func (dls *dialogState) Hangup() bool {
+func (dls *dialogState) hangup() bool {
 	switch dls.state {
 	case StatusProceeding, StatusRinging:
 		if err := dls.manager.Send(dls.manager.NewCancel(dls.invite)); err != nil {
@@ -498,4 +509,13 @@ func (dls *dialogState) Hangup() bool {
 		dls.transition(StatusHangup)
 		return false
 	}
+}
+
+func (d *Dialog) Hangup() {
+	if d.hangupDone {
+		return
+	}
+	d.hangupDone = true
+	d.doHangup <- struct{}{}
+	close(d.doHangup)
 }
