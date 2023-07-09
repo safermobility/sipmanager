@@ -146,7 +146,7 @@ func Parse(s string, strict bool) (sdp *SDP, err error) {
 	sdp.Attrs = make([][2]string, 0, len(lines))
 
 	foundWarnings := false
-	warning := fmt.Errorf("%w; ", WarnMalformedSDP)
+	warning := WarnMalformedSDP
 
 	// Extract information from SDP.
 	var okOrigin, okConn bool
