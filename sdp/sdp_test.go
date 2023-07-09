@@ -559,6 +559,60 @@ var sdpTests = []sdpTest{
 			Ptime: 20,
 		},
 	},
+
+	{
+		name: "Avaya no video support",
+		s: ("v=0\r\n" +
+			"o=- 1688577024 2 IN IP4 10.50.109.100\r\n" +
+			"s=-\r\n" +
+			"c=IN IP4 192.0.2.12\r\n" +
+			"b=AS:64\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 36568 RTP/AVP 0\r\n" +
+			"c=IN IP4 192.0.2.12\r\n" +
+			"a=sendrecv\r\n" +
+			"a=ptime:20\r\n" +
+			"m=video 0 RTP/AVP 103\r\n" +
+			"c=IN IP4 0.0.0.0\r\n" +
+			"a=inactive\r\n" +
+			"a=rtpmap:103 H264/90000\r\n" +
+			"a=ptime:20"),
+		s2: ("v=0\r\n" +
+			"o=- 1688577024 2 IN IP4 10.50.109.100\r\n" +
+			"s=-\r\n" +
+			"c=IN IP4 192.0.2.12\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 36568 RTP/AVP 0\r\n" +
+			"a=rtpmap:0 PCMU/8000\r\n" +
+			"a=ptime:20\r\n" +
+			"a=sendrecv"),
+		sdp: &sdp.SDP{
+			Origin: sdp.Origin{
+				User:    "-",
+				ID:      "1688577024",
+				Version: "2",
+				Addr:    "10.50.109.100",
+			},
+			Session: "-",
+			Time:    "0 0",
+			Addr:    "192.0.2.12",
+			Audio: &sdp.Media{
+				Proto: "RTP/AVP",
+				Port:  36568,
+				Codecs: []sdp.Codec{
+					{PT: 0, Name: "PCMU", Rate: 8000},
+				},
+			},
+			Video: nil,
+			Attrs: [][2]string{
+				{"inactive", ""},
+				// {"rtcp", "50287"},
+				// {"mid", "audio0"},
+				// {"rtcp", "50323"},
+			},
+			Ptime: 20,
+		},
+	},
 }
 
 func sdpCompareCodec(t *testing.T, name string, correct, codec *sdp.Codec) {
@@ -717,7 +771,6 @@ func TestFormatSDP(t *testing.T) {
 		if s != sdp {
 			t.Error("\n" + test.name + "\n\n" + s + "\nIS NOT\n\n" + sdp)
 			fmt.Printf("%s", sdp)
-			fmt.Printf("pokémon")
 		}
 	}
 }
