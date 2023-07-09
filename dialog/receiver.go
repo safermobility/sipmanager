@@ -1,7 +1,9 @@
 package dialog
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"strconv"
 	"time"
@@ -17,12 +19,15 @@ func (m *Manager) ReceiveMessages() {
 	for {
 		amt, addr, err := m.sock.ReadFromUDPAddrPort(buf)
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				m.logger.Info("closed sip port", slog.String("listen", m.listenAddress))
+				break
+			}
 			m.logger.Error(
 				"error reading from sip port",
 				util.SlogError(err),
 				slog.String("source", addr.String()),
 			)
-			break
 		}
 		packet := buf[0:amt]
 		if m.rawTrace {
