@@ -3,6 +3,8 @@
         "ACK'ed",
         "annexb",
         "Avaya",
+        "avp",
+        "avpf",
         "DTMF",
         "fmtp",
         "gosip",
@@ -10,17 +12,23 @@
         "javax",
         "kamailio",
         "kurento",
+        "Nums",
         "PCMA",
         "PCMU",
         "pjmedia",
         "ptime",
         "rport",
         "rtcp",
+        "rtp",
         "rtpmap",
+        "savp",
+        "savpf",
         "speex",
         "srtp",
         "srvs",
-        "UDPTL"
+        "tcp",
+        "TCPIP",
+        "udptl"
     ],
     "cSpell.allowCompoundWords": true
 }

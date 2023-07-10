@@ -16,7 +16,9 @@ package sdp
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Codec describes one of the codec lines in an SDP. This data will be
@@ -28,6 +30,22 @@ type Codec struct {
 	Rate  int    // frequency in hertz.  usually 8000
 	Param string // sometimes used to specify number of channels
 	Fmtp  string // some extra info; i.e. dtmf might set as "0-16"
+
+	valid bool // an rtpmap line was parsed for this codec, if needed
+}
+
+func NewCodec(pt uint8) (*Codec, error) {
+	if isDynamicPT(pt) {
+		return &Codec{
+			PT: pt,
+		}, nil
+	}
+
+	if c, ok := StandardCodecs[pt]; ok {
+		return &c, nil
+	}
+
+	return nil, fmt.Errorf("unknown iana codec id '%d'", pt)
 }
 
 func (codec *Codec) Append(b *bytes.Buffer) {
@@ -49,4 +67,43 @@ func (codec *Codec) Append(b *bytes.Buffer) {
 		b.WriteString(codec.Fmtp)
 		b.WriteString("\r\n")
 	}
+}
+
+func (codec *Codec) addRtpmap(s string) (err error) {
+	// TODO: do we need to check if it's already been set once?
+	tokens := strings.Split(s, "/")
+	if tokens != nil && len(tokens) >= 2 {
+		codec.Name = tokens[0]
+		codec.Rate, err = strconv.Atoi(tokens[1])
+		if err != nil {
+			return fmt.Errorf("invalid rtpmap rate '%s'", tokens[1])
+		}
+		if len(tokens) >= 3 {
+			codec.Param = tokens[2]
+		}
+		codec.valid = true
+	} else {
+		return fmt.Errorf("invalid rtpmap '%s'", s)
+	}
+	return nil
+}
+
+func (codec *Codec) addFmtp(s string) (err error) {
+	// TODO: do we need to check if it's already been set once?
+	codec.Fmtp = s
+	return nil
+}
+
+// If this codec is dynamic, it must have an rtpmap line present.
+// If it is static, an rtpmap line is not required
+func (codec *Codec) IsValid() bool {
+	if isDynamicPT(codec.PT) {
+		return codec.valid
+	}
+	return true
+}
+
+// Returns true if IANA says this payload type is dynamic.
+func isDynamicPT(pt uint8) bool {
+	return (pt >= 96)
 }

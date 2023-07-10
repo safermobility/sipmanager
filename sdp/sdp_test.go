@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	"github.com/safermobility/sipmanager/sdp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type sdpTest struct {
@@ -46,7 +48,7 @@ var sdpTests = []sdpTest{
 			"a=ptime:20\r\n" +
 			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "root",
 				ID:      "31589",
 				Version: "31589",
@@ -55,18 +57,22 @@ var sdpTests = []sdpTest{
 			Session: "session",
 			Time:    "0 0",
 			Addr:    "10.0.0.38",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  30126,
-				Codecs: []sdp.Codec{
-					{PT: 0, Name: "PCMU", Rate: 8000},
-					{PT: 101, Name: "telephone-event", Rate: 8000, Fmtp: "0-16"},
+			Media: []*sdp.Media{
+				{
+					Type:      sdp.MediaTypeAudio,
+					Proto:     "RTP/AVP",
+					Port:      30126,
+					Ptime:     20,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 0, Name: "PCMU", Rate: 8000},
+						{PT: 101, Name: "telephone-event", Rate: 8000, Fmtp: "0-16"},
+					},
+					Attrs: [][2]string{
+						{"silenceSupp", "off - - - -"},
+					},
 				},
 			},
-			Attrs: [][2]string{
-				{"silenceSupp", "off - - - -"},
-			},
-			Ptime: 20,
 		},
 	},
 
@@ -76,21 +82,20 @@ var sdpTests = []sdpTest{
 			"o=- 3366701332 3366701332 IN IP4 1.2.3.4\r\n" +
 			"c=IN IP4 1.2.3.4\r\n" +
 			"m=audio 32898 RTP/AVP 18\r\n" +
-			"m=video 32900 RTP/AVP 34\r\n" +
-			"a=fmtp:18 annexb=yes",
+			"a=fmtp:18 annexb=yes\r\n" +
+			"m=video 32900 RTP/AVP 34\r\n",
 		s2: "v=0\r\n" +
 			"o=- 3366701332 3366701332 IN IP4 1.2.3.4\r\n" +
-			"s=pokémon\r\n" +
+			"s=-\r\n" +
 			"c=IN IP4 1.2.3.4\r\n" +
 			"t=0 0\r\n" +
 			"m=audio 32898 RTP/AVP 18\r\n" +
 			"a=rtpmap:18 G729/8000\r\n" +
 			"a=fmtp:18 annexb=yes\r\n" +
 			"m=video 32900 RTP/AVP 34\r\n" +
-			"a=rtpmap:34 H263/90000\r\n" +
-			"a=sendrecv\r\n",
+			"a=rtpmap:34 H263/90000\r\n",
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3366701332",
 				Version: "3366701332",
@@ -99,21 +104,24 @@ var sdpTests = []sdpTest{
 			Addr:    "1.2.3.4",
 			Session: "-",
 			Time:    "0 0",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  32898,
-				Codecs: []sdp.Codec{
-					{PT: 18, Name: "G729", Rate: 8000, Fmtp: "annexb=yes"},
+			Media: []*sdp.Media{
+				{
+					Type:  sdp.MediaTypeAudio,
+					Proto: "RTP/AVP",
+					Port:  32898,
+					Codecs: []*sdp.Codec{
+						{PT: 18, Name: "G729", Rate: 8000, Fmtp: "annexb=yes"},
+					},
+				},
+				{
+					Type:  sdp.MediaTypeVideo,
+					Proto: "RTP/AVP",
+					Port:  32900,
+					Codecs: []*sdp.Codec{
+						{PT: 34, Name: "H263", Rate: 90000},
+					},
 				},
 			},
-			Video: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  32900,
-				Codecs: []sdp.Codec{
-					{PT: 34, Name: "H263", Rate: 90000},
-				},
-			},
-			Attrs: [][2]string{},
 		},
 	},
 
@@ -137,10 +145,9 @@ var sdpTests = []sdpTest{
 			"a=rtpmap:18 G729/8000\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"a=rtpmap:101 telephone-event/8000\r\n" +
-			"a=ptime:20\r\n" +
-			"a=sendrecv\r\n",
+			"a=ptime:20\r\n",
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3366701332",
 				Version: "3366701332",
@@ -149,18 +156,20 @@ var sdpTests = []sdpTest{
 			Session: "-",
 			Time:    "0 0",
 			Addr:    "1.2.3.4",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  32898,
-				Codecs: []sdp.Codec{
-					{PT: 9, Name: "G722", Rate: 8000},
-					{PT: 18, Name: "G729", Rate: 8000},
-					{PT: 0, Name: "PCMU", Rate: 8000},
-					{PT: 101, Name: "telephone-event", Rate: 8000},
+			Media: []*sdp.Media{
+				{
+					Type:  sdp.MediaTypeAudio,
+					Proto: "RTP/AVP",
+					Port:  32898,
+					Ptime: 20,
+					Codecs: []*sdp.Codec{
+						{PT: 9, Name: "G722", Rate: 8000},
+						{PT: 18, Name: "G729", Rate: 8000},
+						{PT: 0, Name: "PCMU", Rate: 8000},
+						{PT: 101, Name: "telephone-event", Rate: 8000},
+					},
 				},
 			},
-			Ptime: 20,
-			Attrs: [][2]string{},
 		},
 	},
 
@@ -184,10 +193,9 @@ var sdpTests = []sdpTest{
 			"a=rtpmap:18 G729/8000\r\n" +
 			"a=rtpmap:0 PCMU/8000\r\n" +
 			"a=rtpmap:101 telephone-event/8000\r\n" +
-			"a=ptime:20\r\n" +
-			"a=sendrecv\r\n",
+			"a=ptime:20\r\n",
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3366701332",
 				Version: "3366701332",
@@ -196,18 +204,20 @@ var sdpTests = []sdpTest{
 			Session: "-",
 			Time:    "0 0",
 			Addr:    "dead:beef::666",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  32898,
-				Codecs: []sdp.Codec{
-					{PT: 9, Name: "G722", Rate: 8000},
-					{PT: 18, Name: "G729", Rate: 8000},
-					{PT: 0, Name: "PCMU", Rate: 8000},
-					{PT: 101, Name: "telephone-event", Rate: 8000},
+			Media: []*sdp.Media{
+				{
+					Type:  sdp.MediaTypeAudio,
+					Proto: "RTP/AVP",
+					Port:  32898,
+					Ptime: 20,
+					Codecs: []*sdp.Codec{
+						{PT: 9, Name: "G722", Rate: 8000},
+						{PT: 18, Name: "G729", Rate: 8000},
+						{PT: 0, Name: "PCMU", Rate: 8000},
+						{PT: 101, Name: "telephone-event", Rate: 8000},
+					},
 				},
 			},
-			Ptime: 20,
-			Attrs: [][2]string{},
 		},
 	},
 
@@ -235,7 +245,7 @@ var sdpTests = []sdpTest{
 			"a=ptime:20\r\n" +
 			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3457169218",
 				Version: "3457169218",
@@ -244,25 +254,29 @@ var sdpTests = []sdpTest{
 			Session: "pjmedia",
 			Time:    "0 0",
 			Addr:    "10.11.34.37",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  4000,
-				Codecs: []sdp.Codec{
-					{PT: 103, Name: "speex", Rate: 16000},
-					{PT: 102, Name: "speex", Rate: 8000},
-					{PT: 104, Name: "speex", Rate: 32000},
-					{PT: 113, Name: "iLBC", Rate: 8000, Fmtp: "mode=30"},
-					{PT: 3, Name: "GSM", Rate: 8000},
-					{PT: 0, Name: "PCMU", Rate: 8000},
-					{PT: 8, Name: "PCMA", Rate: 8000},
-					{PT: 9, Name: "G722", Rate: 8000},
-					{PT: 101, Name: "telephone-event", Rate: 8000, Fmtp: "0-15"},
+			Media: []*sdp.Media{
+				{
+					Type:      sdp.MediaTypeAudio,
+					Proto:     "RTP/AVP",
+					Port:      4000,
+					Ptime:     20,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 103, Name: "speex", Rate: 16000},
+						{PT: 102, Name: "speex", Rate: 8000},
+						{PT: 104, Name: "speex", Rate: 32000},
+						{PT: 113, Name: "iLBC", Rate: 8000, Fmtp: "mode=30"},
+						{PT: 3, Name: "GSM", Rate: 8000},
+						{PT: 0, Name: "PCMU", Rate: 8000},
+						{PT: 8, Name: "PCMA", Rate: 8000},
+						{PT: 9, Name: "G722", Rate: 8000},
+						{PT: 101, Name: "telephone-event", Rate: 8000, Fmtp: "0-15"},
+					},
+					Attrs: [][2]string{
+						{"rtcp", "4001 IN IP4 10.11.34.37"},
+						{"X-nat", "0"},
+					},
 				},
-			},
-			Ptime: 20,
-			Attrs: [][2]string{
-				{"rtcp", "4001 IN IP4 10.11.34.37"},
-				{"X-nat", "0"},
 			},
 		},
 	},
@@ -278,7 +292,7 @@ var sdpTests = []sdpTest{
 			"a=rtpmap:111 MP3/44100/2\r\n" +
 			"a=sendonly\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3366701332",
 				Version: "3366701334",
@@ -287,15 +301,17 @@ var sdpTests = []sdpTest{
 			Session: "squigglies",
 			Time:    "0 0",
 			Addr:    "dead:beef::666",
-			Audio: &sdp.Media{
-				Proto: "TCP/IP",
-				Port:  80,
-				Codecs: []sdp.Codec{
-					{PT: 111, Name: "MP3", Rate: 44100, Param: "2"},
+			Media: []*sdp.Media{
+				{
+					Type:  sdp.MediaTypeAudio,
+					Proto: "TCP/IP",
+					Port:  80,
+					Codecs: []*sdp.Codec{
+						{PT: 111, Name: "MP3", Rate: 44100, Param: "2"},
+					},
+					Direction: sdp.SendOnly,
 				},
-				Direction: sdp.SendOnly,
 			},
-			Attrs: [][2]string{},
 		},
 	},
 
@@ -333,7 +349,7 @@ var sdpTests = []sdpTest{
 			"a=ssrc:1326927367 cname:user1274683781@host-2b8db277\r\n" +
 			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3896395953",
 				Version: "3896395953",
@@ -342,43 +358,47 @@ var sdpTests = []sdpTest{
 			Session: "Kurento Media Server",
 			Time:    "0 0",
 			Addr:    "172.31.6.171",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVPF",
-				Port:  41094,
-				Codecs: []sdp.Codec{
-					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
-					{PT: 0, Name: "PCMU", Rate: 8000},
-					{PT: 97, Name: "AMR", Rate: 8000},
+			Media: []*sdp.Media{
+				{
+					Type:  sdp.MediaTypeAudio,
+					Proto: "RTP/AVPF",
+					Port:  41094,
+					Codecs: []*sdp.Codec{
+						{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+						{PT: 0, Name: "PCMU", Rate: 8000},
+						{PT: 97, Name: "AMR", Rate: 8000},
+					},
+				},
+				{
+					Type:      sdp.MediaTypeVideo,
+					Proto:     "RTP/AVPF",
+					Port:      51012,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 102, Name: "VP8", Rate: 90000},
+						{PT: 103, Name: "H264", Rate: 90000, Fmtp: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"},
+					},
+					Attrs: [][2]string{
+						{"setup", "actpass"},
+						{"extmap", "3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
+						{"rtcp", "41095"},
+						{"mid", "audio0"},
+						{"ssrc", "4148631681 cname:user1274683781@host-2b8db277"},
+						{"setup", "actpass"},
+						{"extmap", "3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
+						{"rtcp", "51013"},
+						{"mid", "video0"},
+						{"rtcp-fb", "102 nack"},
+						{"rtcp-fb", "102 nack pli"},
+						{"rtcp-fb", "102 goog-remb"},
+						{"rtcp-fb", "102 ccm fir"},
+						{"rtcp-fb", "103 nack"},
+						{"rtcp-fb", "103 nack pli"},
+						{"rtcp-fb", "103 ccm fir"},
+						{"ssrc", "1326927367 cname:user1274683781@host-2b8db277"},
+					},
 				},
 			},
-			Video: &sdp.Media{
-				Proto: "RTP/AVPF",
-				Port:  51012,
-				Codecs: []sdp.Codec{
-					{PT: 102, Name: "VP8", Rate: 90000},
-					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"},
-				},
-			},
-			Attrs: [][2]string{
-				{"setup", "actpass"},
-				{"extmap", "3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
-				{"rtcp", "41095"},
-				{"mid", "audio0"},
-				{"ssrc", "4148631681 cname:user1274683781@host-2b8db277"},
-				{"setup", "actpass"},
-				{"extmap", "3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"},
-				{"rtcp", "51013"},
-				{"mid", "video0"},
-				{"rtcp-fb", "102 nack"},
-				{"rtcp-fb", "102 nack pli"},
-				{"rtcp-fb", "102 goog-remb"},
-				{"rtcp-fb", "102 ccm fir"},
-				{"rtcp-fb", "103 nack"},
-				{"rtcp-fb", "103 nack pli"},
-				{"rtcp-fb", "103 ccm fir"},
-				{"ssrc", "1326927367 cname:user1274683781@host-2b8db277"},
-			},
-			Ptime: 0,
 		},
 	},
 
@@ -410,8 +430,34 @@ var sdpTests = []sdpTest{
 			"a=fmtp:103 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\n" +
 			"a=sendrecv\r\n" +
 			"a=rtcp:50303\r\n"),
+		s2: ("v=0\r\n" +
+			"o=- 3896394990 3896394990 IN IP4 192.0.2.10\r\n" +
+			"s=Kurento Media Server\r\n" +
+			"c=IN IP4 192.0.2.10\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 50268 RTP/AVP 96 0\r\n" +
+			"a=rtpmap:96 opus/48000/2\r\n" +
+			"a=rtpmap:0 pcmu/8000\r\n" +
+			"a=rtcp:50269\r\n" +
+			"a=sendrecv\r\n" +
+			"m=video 50302 RTP/AVP 102 103\r\n" +
+			"a=rtpmap:102 VP8/90000\r\n" +
+			"a=rtpmap:103 H264/90000\r\n" +
+			"a=fmtp:103 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\n" +
+			"a=ssrc:2163144404 cname:user539622331@host-6cf6de4c\r\n" +
+			"a=rtcp-fb:102 nack\r\n" +
+			"a=rtcp-fb:102 nack pli\r\n" +
+			"a=rtcp-fb:102 goog-remb\r\n" +
+			"a=rtcp-fb:102 ccm fir\r\n" +
+			"a=rtcp-fb:103 nack\r\n" +
+			"a=rtcp-fb:103 nack pli\r\n" +
+			"a=rtcp-fb:103 ccm fir\r\n" +
+			"a=ssrc:688187071 cname:user539622331@host-6cf6de4c\r\n" +
+			"a=mid:audio0\r\n" +
+			"a=rtcp:50303\r\n" +
+			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3896394990",
 				Version: "3896394990",
@@ -420,37 +466,44 @@ var sdpTests = []sdpTest{
 			Session: "Kurento Media Server",
 			Time:    "0 0",
 			Addr:    "192.0.2.10",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  50268,
-				Codecs: []sdp.Codec{
-					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
-					{PT: 0, Name: "pcmu", Rate: 8000},
+			Media: []*sdp.Media{
+				{
+					Type:      sdp.MediaTypeAudio,
+					Proto:     "RTP/AVP",
+					Port:      50268,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+						{PT: 0, Name: "pcmu", Rate: 8000},
+					},
+					Attrs: [][2]string{
+						{"rtcp", "50269"},
+					},
+				},
+				{
+					Type:      sdp.MediaTypeVideo,
+					Proto:     "RTP/AVP",
+					Port:      50302,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 102, Name: "VP8", Rate: 90000},
+						{PT: 103, Name: "H264", Rate: 90000, Fmtp: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"},
+					},
+					Attrs: [][2]string{
+						{"ssrc", "2163144404 cname:user539622331@host-6cf6de4c"},
+						{"rtcp-fb", "102 nack"},
+						{"rtcp-fb", "102 nack pli"},
+						{"rtcp-fb", "102 goog-remb"},
+						{"rtcp-fb", "102 ccm fir"},
+						{"rtcp-fb", "103 nack"},
+						{"rtcp-fb", "103 nack pli"},
+						{"rtcp-fb", "103 ccm fir"},
+						{"ssrc", "688187071 cname:user539622331@host-6cf6de4c"},
+						{"mid", "audio0"},
+						{"rtcp", "50303"},
+					},
 				},
 			},
-			Video: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  50302,
-				Codecs: []sdp.Codec{
-					{PT: 102, Name: "VP8", Rate: 90000},
-					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"},
-				},
-			},
-			Attrs: [][2]string{
-				{"rtcp", "50269"},
-				{"ssrc", "2163144404 cname:user539622331@host-6cf6de4c"},
-				{"rtcp-fb", "102 nack"},
-				{"rtcp-fb", "102 nack pli"},
-				{"rtcp-fb", "102 goog-remb"},
-				{"rtcp-fb", "102 ccm fir"},
-				{"rtcp-fb", "103 nack"},
-				{"rtcp-fb", "103 nack pli"},
-				{"rtcp-fb", "103 ccm fir"},
-				{"ssrc", "688187071 cname:user539622331@host-6cf6de4c"},
-				{"mid", "audio0"},
-				{"rtcp", "50303"},
-			},
-			Ptime: 0,
 		},
 	},
 
@@ -473,7 +526,7 @@ var sdpTests = []sdpTest{
 			"a=rtpmap:102 VP8/90000\r\n" +
 			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3896394990",
 				Version: "3896394992",
@@ -482,26 +535,30 @@ var sdpTests = []sdpTest{
 			Session: "Asterisk",
 			Time:    "0 0",
 			Addr:    "192.0.2.200",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  19540,
-				Codecs: []sdp.Codec{
-					{PT: 0, Name: "PCMU", Rate: 8000},
-					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+			Media: []*sdp.Media{
+				{
+					Type:      sdp.MediaTypeAudio,
+					Proto:     "RTP/AVP",
+					Port:      19540,
+					Ptime:     20,
+					Maxptime:  60,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 0, Name: "PCMU", Rate: 8000},
+						{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+					},
+				},
+				{
+					Type:      sdp.MediaTypeVideo,
+					Proto:     "RTP/AVP",
+					Port:      19252,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 103, Name: "H264", Rate: 90000, Fmtp: "packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F"},
+						{PT: 102, Name: "VP8", Rate: 90000},
+					},
 				},
 			},
-			Video: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  19252,
-				Codecs: []sdp.Codec{
-					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F"},
-					{PT: 102, Name: "VP8", Rate: 90000},
-				},
-			},
-			Attrs: [][2]string{
-				{"maxptime", "60"},
-			},
-			Ptime: 20,
 		},
 	},
 
@@ -525,8 +582,26 @@ var sdpTests = []sdpTest{
 			"a=fmtp:103 packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F\r\n" +
 			"a=sendrecv\r\n" +
 			"a=rtcp:50323\r\n"),
+		s2: ("v=0\r\n" +
+			"o=- 3896394990 3896394992 IN IP4 192.0.2.11\r\n" +
+			"s=Asterisk\r\n" +
+			"c=IN IP4 192.0.2.11\r\n" +
+			"t=0 0\r\n" +
+			"m=audio 50286 RTP/AVPF 96\r\n" +
+			"a=rtpmap:96 opus/48000/2\r\n" +
+			"a=rtcp:50287\r\n" +
+			"a=ptime:20\r\n" +
+			"a=maxptime:60\r\n" +
+			"a=sendrecv\r\n" +
+			"m=video 50322 RTP/AVPF 103 102\r\n" +
+			"a=rtpmap:103 H264/90000\r\n" +
+			"a=fmtp:103 packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F\r\n" +
+			"a=rtpmap:102 VP8/90000\r\n" +
+			"a=mid:audio0\r\n" +
+			"a=rtcp:50323\r\n" +
+			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "3896394990",
 				Version: "3896394992",
@@ -535,28 +610,36 @@ var sdpTests = []sdpTest{
 			Session: "Asterisk",
 			Time:    "0 0",
 			Addr:    "192.0.2.11",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVPF",
-				Port:  50286,
-				Codecs: []sdp.Codec{
-					{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+			Media: []*sdp.Media{
+				{
+					Type:      sdp.MediaTypeAudio,
+					Proto:     "RTP/AVPF",
+					Port:      50286,
+					Ptime:     20,
+					Maxptime:  60,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 96, Name: "opus", Rate: 48000, Param: "2"},
+					},
+					Attrs: [][2]string{
+						{"rtcp", "50287"},
+					},
+				},
+				{
+					Type:      sdp.MediaTypeVideo,
+					Proto:     "RTP/AVPF",
+					Port:      50322,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 103, Name: "H264", Rate: 90000, Fmtp: "packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F"},
+						{PT: 102, Name: "VP8", Rate: 90000},
+					},
+					Attrs: [][2]string{
+						{"mid", "audio0"},
+						{"rtcp", "50323"},
+					},
 				},
 			},
-			Video: &sdp.Media{
-				Proto: "RTP/AVPF",
-				Port:  50322,
-				Codecs: []sdp.Codec{
-					{PT: 103, Name: "H264", Rate: 90000, Fmtp: "packetization-mode=1;level-asymmetry-allowed=1;profile-level-id=42E01F"},
-					{PT: 102, Name: "VP8", Rate: 90000},
-				},
-			},
-			Attrs: [][2]string{
-				{"maxptime", "60"},
-				{"rtcp", "50287"},
-				{"mid", "audio0"},
-				{"rtcp", "50323"},
-			},
-			Ptime: 20,
 		},
 	},
 
@@ -587,7 +670,7 @@ var sdpTests = []sdpTest{
 			"a=ptime:20\r\n" +
 			"a=sendrecv\r\n"),
 		sdp: &sdp.SDP{
-			Origin: sdp.Origin{
+			Origin: &sdp.Origin{
 				User:    "-",
 				ID:      "1688577024",
 				Version: "2",
@@ -596,16 +679,18 @@ var sdpTests = []sdpTest{
 			Session: "-",
 			Time:    "0 0",
 			Addr:    "192.0.2.12",
-			Audio: &sdp.Media{
-				Proto: "RTP/AVP",
-				Port:  36568,
-				Codecs: []sdp.Codec{
-					{PT: 0, Name: "PCMU", Rate: 8000},
+			Media: []*sdp.Media{
+				{
+					Type:      sdp.MediaTypeAudio,
+					Proto:     "RTP/AVP",
+					Port:      36568,
+					Ptime:     20,
+					Direction: sdp.SendRecv,
+					Codecs: []*sdp.Codec{
+						{PT: 0, Name: "PCMU", Rate: 8000},
+					},
 				},
 			},
-			Video: nil,
-			Attrs: [][2]string{},
-			Ptime: 20,
 		},
 	},
 }
@@ -621,24 +706,14 @@ func sdpCompareCodec(t *testing.T, name string, correct, codec *sdp.Codec) {
 		return
 	}
 
-	if correct.PT != codec.PT {
-		t.Error(name, "PT", correct.PT, "!=", codec.PT)
-	}
-	if correct.Name != codec.Name {
-		t.Error(name, "Name", correct.Name, "!=", codec.Name)
-	}
-	if correct.Rate != codec.Rate {
-		t.Error(name, "Rate", correct.Rate, "!=", codec.Rate)
-	}
-	if correct.Param != codec.Param {
-		t.Error(name, "Param", correct.Param, "!=", codec.Param)
-	}
-	if correct.Fmtp != codec.Fmtp {
-		t.Error(name, "Fmtp", correct.Fmtp, "!=", codec.Fmtp)
-	}
+	assert.Equal(t, correct.PT, codec.PT, "media %s - codec %d", name, correct.PT)
+	assert.Equal(t, correct.Name, codec.Name, "media %s - codec %d", name, correct.PT)
+	assert.Equal(t, correct.Rate, codec.Rate, "media %s - codec %d", name, correct.PT)
+	assert.Equal(t, correct.Param, codec.Param, "media %s - codec %d", name, correct.PT)
+	assert.Equal(t, correct.Fmtp, codec.Fmtp, "media %s - codec %d", name, correct.PT)
 }
 
-func sdpCompareCodecs(t *testing.T, name string, corrects, codecs []sdp.Codec) {
+func sdpCompareCodecs(t *testing.T, name string, corrects, codecs []*sdp.Codec) {
 	if corrects != nil && codecs == nil {
 		t.Error(name, "codecs not found")
 	}
@@ -649,17 +724,11 @@ func sdpCompareCodecs(t *testing.T, name string, corrects, codecs []sdp.Codec) {
 		return
 	}
 
-	if len(corrects) != len(codecs) {
-		t.Error(name, "len(Codecs)", len(corrects), "!=", len(codecs))
-	} else {
-		for i := range corrects {
-			c1, c2 := &corrects[i], &codecs[i]
-			if c1 == nil || c2 == nil {
-				t.Error(name, "where my codecs at?")
-			} else {
-				sdpCompareCodec(t, name, c1, c2)
-			}
-		}
+	require.Len(t, codecs, len(corrects))
+
+	for i := range corrects {
+		c1, c2 := corrects[i], codecs[i]
+		sdpCompareCodec(t, name, c1, c2)
 	}
 }
 
@@ -674,12 +743,12 @@ func sdpCompareMedia(t *testing.T, name string, correct, media *sdp.Media) {
 		return
 	}
 
-	if correct.Proto != media.Proto {
-		t.Error(name, "Proto", correct.Proto, "!=", media.Proto)
-	}
-	if correct.Port != media.Port {
-		t.Error(name, "Port", correct.Port, "!=", media.Port)
-	}
+	assert.Equal(t, correct.Type, media.Type, "media %s - %s - type", name, media.Type)
+	assert.Equal(t, correct.Proto, media.Proto, "media %s - %s - proto", name, media.Type)
+	assert.Equal(t, correct.Port, media.Port, "media %s - %s - port", name, media.Type)
+	assert.Equal(t, correct.Ptime, media.Ptime, "media %s - %s - ptime", name, media.Type)
+	assert.Equal(t, correct.Maxptime, media.Maxptime, "media %s - %s - maxptime", name, media.Type)
+
 	if media.Codecs == nil || len(media.Codecs) < 1 {
 		t.Error(name, "Must have at least one codec")
 	}
@@ -721,9 +790,6 @@ func TestParse(t *testing.T) {
 		if test.sdp.Time != sdp.Time {
 			t.Error(test.name, "Time", test.sdp.Time, "!=", sdp.Time)
 		}
-		if test.sdp.Ptime != sdp.Ptime {
-			t.Error(test.name, "Ptime", test.sdp.Ptime, "!=", sdp.Ptime)
-		}
 		if test.sdp.Direction != sdp.Direction {
 			t.Error(test.name, "Direction doesn't match: expected", test.sdp.Direction, "was", sdp.Direction)
 		}
@@ -748,8 +814,13 @@ func TestParse(t *testing.T) {
 			}
 		}
 
-		sdpCompareMedia(t, "Audio", test.sdp.Audio, sdp.Audio)
-		sdpCompareMedia(t, "Video", test.sdp.Video, sdp.Video)
+		if len(test.sdp.Media) != len(sdp.Media) {
+			t.Errorf("%s: incorrect media count: expected %d, was %d", test.name, len(test.sdp.Media), len(sdp.Media))
+		} else {
+			for n := range test.sdp.Media {
+				sdpCompareMedia(t, test.name, test.sdp.Media[n], sdp.Media[n])
+			}
+		}
 	}
 }
 
