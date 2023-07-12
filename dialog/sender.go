@@ -35,9 +35,10 @@ func (m *Manager) Send(msg *sip.Msg) error {
 
 	if msg.MaxForwards > 0 {
 		msg.MaxForwards--
-	}
-	if msg.MaxForwards == 0 {
-		return ErrLocalLoopDetected
+		// Note: only check for Max-Forwards reaching zero if it was set non-zero before
+		if msg.MaxForwards == 0 {
+			return ErrLocalLoopDetected
+		}
 	}
 
 	m.addTimestamp(msg)
