@@ -15,8 +15,9 @@
 package dialog
 
 import (
+	"log/slog"
+
 	"github.com/safermobility/sipmanager/sip"
-	"golang.org/x/exp/slog"
 )
 
 const (

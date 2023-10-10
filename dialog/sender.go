@@ -3,12 +3,12 @@ package dialog
 import (
 	"bytes"
 	"errors"
+	"log/slog"
 	"net"
 	"strconv"
 
 	"github.com/safermobility/sipmanager/sip"
 	"github.com/safermobility/sipmanager/util"
-	"golang.org/x/exp/slog"
 )
 
 var (

@@ -3,12 +3,12 @@ package dialog
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/safermobility/sipmanager/sdp"
 	"github.com/safermobility/sipmanager/sip"
 	"github.com/safermobility/sipmanager/util"
-	"golang.org/x/exp/slog"
 )
 
 type Status int

@@ -17,14 +17,13 @@ package util
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"log/slog"
 	"math"
 	"math/big"
 	"net"
 	"strconv"
 	"strings"
 	"syscall"
-
-	"golang.org/x/exp/slog"
 )
 
 // Return true if error is ICMP connection refused.

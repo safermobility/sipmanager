@@ -1,12 +1,12 @@
 package dialog
 
 import (
+	"log/slog"
 	"net"
 	"net/netip"
 	"time"
 
 	"github.com/safermobility/sipmanager/sip"
-	"golang.org/x/exp/slog"
 )
 
 type Manager struct {

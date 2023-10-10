@@ -3,6 +3,7 @@ package dialog
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/netip"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/safermobility/sipmanager/sip"
 	"github.com/safermobility/sipmanager/util"
-	"golang.org/x/exp/slog"
 )
 
 func (m *Manager) ReceiveMessages() {

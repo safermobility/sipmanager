@@ -3,11 +3,10 @@ package dialog
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/netip"
 	"time"
-
-	"golang.org/x/exp/slog"
 )
 
 type ManagerOption func(*Manager) error
