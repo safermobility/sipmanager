@@ -21,6 +21,7 @@ type Manager struct {
 	listenAddress    string         // defaults to empty string = "all addresses on a random port"
 	publicAddrPort   netip.AddrPort // If behind 1-to-1 NAT, this IP will be considered our local address
 	proxyAddress     *net.UDPAddr   // If set, send all messages to the proxy instead of directly to the destination
+	allowReinvite    bool           // Whether to allow RFC 3725/4117 re-INVITE or not
 
 	sock    *net.UDPConn
 	contact *sip.Addr // The local (or public IP, if set) Contact for this server

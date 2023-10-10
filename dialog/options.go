@@ -17,6 +17,14 @@ var (
 	ErrProxyAddressNotValid = errors.New("proxy address is not valid")
 )
 
+func WithAllowReinvite(allow bool) ManagerOption {
+	return func(m *Manager) error {
+		m.allowReinvite = allow
+
+		return nil
+	}
+}
+
 // Select the local listening address and port
 func WithListenAddrPort(a netip.AddrPort) ManagerOption {
 	return func(m *Manager) error {

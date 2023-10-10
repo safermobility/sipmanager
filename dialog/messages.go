@@ -20,10 +20,15 @@ import (
 )
 
 const (
-	GosipAllow = "INVITE, ACK, CANCEL, BYE, OPTIONS"
+	GosipAllow             = "ACK, CANCEL, BYE, OPTIONS"
+	GosipAllowWithReinvite = "INVITE, ACK, CANCEL, BYE, OPTIONS"
 )
 
 func (m *Manager) NewResponse(msg *sip.Msg, status int) *sip.Msg {
+	allow := GosipAllow
+	if m.allowReinvite {
+		allow = GosipAllowWithReinvite
+	}
 	return &sip.Msg{
 		Status:      status,
 		Phrase:      sip.Phrase(status),
@@ -35,7 +40,7 @@ func (m *Manager) NewResponse(msg *sip.Msg, status int) *sip.Msg {
 		CSeqMethod:  msg.CSeqMethod,
 		RecordRoute: msg.RecordRoute,
 		UserAgent:   m.userAgent,
-		Allow:       GosipAllow,
+		Allow:       allow,
 	}
 }
 
