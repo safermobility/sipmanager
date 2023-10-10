@@ -25,10 +25,15 @@ const (
 type Dialog struct {
 	OnErr   <-chan error
 	OnState <-chan Status
-	OnPeer  <-chan *sdp.SDP
+	OnPeer  <-chan *SDPWithContext
 
 	doHangup   chan<- struct{}
 	hangupDone bool
+}
+
+type SDPWithContext struct {
+	sdp *sdp.SDP
+	msg *sip.Msg
 }
 
 // The "internal" interface of a SIP dialog
@@ -36,7 +41,7 @@ type dialogState struct {
 	manager         *Manager
 	errChan         chan<- error
 	stateChan       chan<- Status
-	peerChan        chan<- *sdp.SDP
+	peerChan        chan<- *SDPWithContext
 	hangupChan      <-chan struct{}
 	state           Status           // Current state of the dialog.
 	callID          sip.CallID       // The Call-ID header value to use for this dialog
@@ -59,7 +64,7 @@ type dialogState struct {
 func (m *Manager) NewDialog(invite *sip.Msg) (*Dialog, error) {
 	errChan := make(chan error)
 	stateChan := make(chan Status)
-	peerChan := make(chan *sdp.SDP)
+	peerChan := make(chan *SDPWithContext)
 	hangupChan := make(chan struct{})
 
 	var callID sip.CallID
@@ -248,7 +253,7 @@ func (dls *dialogState) handleRequest(msg *sip.Msg) bool {
 // If this message has an SDP payload, pass it back to the application
 func (dls *dialogState) checkSDP(msg *sip.Msg) {
 	if payload, ok := msg.Payload.(*sdp.SDP); ok {
-		dls.peerChan <- payload
+		dls.peerChan <- &SDPWithContext{payload, msg}
 	}
 }
 
