@@ -32,8 +32,8 @@ type Dialog struct {
 }
 
 type SDPWithContext struct {
-	sdp *sdp.SDP
-	msg *sip.Msg
+	Payload *sdp.SDP
+	Msg     *sip.Msg
 }
 
 // The "internal" interface of a SIP dialog
